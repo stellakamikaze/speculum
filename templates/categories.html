@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Categorie — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Gestione categorie</h1>
+</header>
+
+<div class="two-column">
+    <section class="panel">
+        <h2>Categorie esistenti</h2>
+        {% if categories %}
+        <ul class="category-list">
+            {% for cat in categories %}
+            <li class="category-item">
+                <div class="category-info">
+                    <strong>{{ cat.name }}</strong>
+                    {% if cat.description %}
+                    <span class="category-desc">{{ cat.description }}</span>
+                    {% endif %}
+                    <span class="category-count">{{ cat.sites|length }} siti</span>
+                </div>
+                <form method="POST" action="{{ url_for('delete_category', category_id=cat.id) }}" class="category-actions" onsubmit="return confirm('Eliminare la categoria {{ cat.name }}? I siti non verranno eliminati.')">
+                    <button type="submit" class="btn btn-small btn-danger">Elimina</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-text">Nessuna categoria creata</p>
+        {% endif %}
+    </section>
+    
+    <section class="panel">
+        <h2>Nuova categoria</h2>
+        <form method="POST" action="{{ url_for('add_category') }}">
+            <div class="form-group">
+                <label for="name">Nome categoria</label>
+                <input type="text" id="name" name="name" required class="form-input" placeholder="es. Blog personali">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Descrizione (opzionale)</label>
+                <textarea id="description" name="description" rows="2" class="form-input" placeholder="Breve descrizione della categoria"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Crea categoria</button>
+        </form>
+    </section>
+</div>
+
+{% endblock %}

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  speculum:
+    build: .
+    container_name: speculum
+    restart: unless-stopped
+    ports:
+      - "5050:5000"
+    volumes:
+      - ./data:/app/instance
+      - /path/to/your/mirrors:/mirrors  # Change this
+    environment:
+      - SECRET_KEY=generate-a-secure-key-here  # Change this
+      - DATABASE_URL=sqlite:////app/instance/speculum.db
+      - MIRRORS_PATH=/mirrors
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: speculum-ollama
+    restart: unless-stopped
+    volumes:
+      - ./ollama_data:/root/.ollama
+    expose:
+      - "11434"

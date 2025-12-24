@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Risultati import — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Import completato</h1>
+</header>
+
+<div class="results-summary">
+    <div class="result-stat success">
+        <span class="result-count">{{ results.added|length }}</span>
+        <span class="result-label">Aggiunti</span>
+    </div>
+    <div class="result-stat warning">
+        <span class="result-count">{{ results.skipped|length }}</span>
+        <span class="result-label">Saltati</span>
+    </div>
+    <div class="result-stat error">
+        <span class="result-count">{{ results.errors|length }}</span>
+        <span class="result-label">Errori</span>
+    </div>
+</div>
+
+{% if results.added %}
+<section class="results-section">
+    <h2>Siti aggiunti</h2>
+    {% if start_immediately %}
+    <p class="section-note">Il crawl è stato avviato per tutti i siti.</p>
+    {% else %}
+    <p class="section-note">I siti sono stati aggiunti ma il crawl non è stato avviato. Avvialo manualmente dalla pagina di dettaglio.</p>
+    {% endif %}
+    
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Tipo</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in results.added %}
+                <tr>
+                    <td><a href="{{ url_for('site_detail', site_id=item.site_id) }}">{{ item.name }}</a></td>
+                    <td class="url-cell">{{ item.url }}</td>
+                    <td>
+                        {% if item.type == 'youtube' %}
+                        <span class="type-badge youtube">YouTube</span>
+                        {% else %}
+                        <span class="type-badge website">Sito web</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('site_detail', site_id=item.site_id) }}" class="btn btn-small">Dettagli</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if results.skipped %}
+<section class="results-section">
+    <h2>Siti saltati</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in results.skipped %}
+                <tr>
+                    <td class="url-cell">{{ item.url }}</td>
+                    <td>{{ item.reason }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if results.errors %}
+<section class="results-section">
+    <h2>Errori</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Errore</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in results.errors %}
+                <tr>
+                    <td class="url-cell">{{ item.url }}</td>
+                    <td class="error-text">{{ item.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<div class="page-actions">
+    <a href="{{ url_for('bulk_add_sites') }}" class="btn btn-primary">Importa altri siti</a>
+    <a href="{{ url_for('sites_list') }}" class="btn btn-secondary">Vai alla lista siti</a>
+</div>
+
+{% endblock %}

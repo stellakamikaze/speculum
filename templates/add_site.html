@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Aggiungi sito — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Aggiungi sito</h1>
+</header>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form method="POST" class="form-panel">
+    <div class="form-group">
+        <label for="url">URL del sito o canale YouTube</label>
+        <input type="url" id="url" name="url" required placeholder="https://esempio.it oppure https://youtube.com/@canale" class="form-input">
+        <span class="form-hint">L'indirizzo completo del sito o canale da archiviare. I canali YouTube vengono riconosciuti automaticamente.</span>
+    </div>
+    
+    <div class="form-group">
+        <label for="name">Nome (opzionale)</label>
+        <input type="text" id="name" name="name" placeholder="Nome descrittivo" class="form-input">
+        <span class="form-hint">Se vuoto, verrà usato il dominio o il nome del canale</span>
+    </div>
+    
+    <div class="form-group">
+        <label for="description">Descrizione (opzionale)</label>
+        <textarea id="description" name="description" rows="3" placeholder="Breve descrizione del sito" class="form-input"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="category_id">Categoria</label>
+        <select id="category_id" name="category_id" class="form-input">
+            <option value="">— Nessuna categoria —</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}">{{ cat.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label for="depth">Profondità crawl</label>
+            <select id="depth" name="depth" class="form-input">
+                <option value="0">Illimitata (tutto il sito)</option>
+                <option value="1">1 livello</option>
+                <option value="2">2 livelli</option>
+                <option value="3">3 livelli</option>
+                <option value="5">5 livelli</option>
+                <option value="10">10 livelli</option>
+            </select>
+            <span class="form-hint">Quanti link in profondità seguire (solo siti web)</span>
+        </div>
+        
+        <div class="form-group">
+            <label for="crawl_interval">Aggiornamento</label>
+            <select id="crawl_interval" name="crawl_interval" class="form-input">
+                <option value="7">Settimanale</option>
+                <option value="14">Ogni 2 settimane</option>
+                <option value="30" selected>Mensile</option>
+                <option value="90">Trimestrale</option>
+                <option value="365">Annuale</option>
+            </select>
+            <span class="form-hint">Frequenza di aggiornamento</span>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="include_external">
+            <span>Scarica risorse esterne (immagini, CSS, JS da altri domini)</span>
+        </label>
+        <span class="form-hint">Utile per siti che caricano immagini da CDN o altri server. Aumenta tempo e spazio richiesti.</span>
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="use_ai" {% if ollama_available %}checked{% else %}disabled{% endif %}>
+            <span>Usa IA per generare categoria e descrizione</span>
+        </label>
+        {% if not ollama_available %}
+        <span class="form-hint warning">Ollama non disponibile. Avvia il servizio per abilitare la categorizzazione automatica.</span>
+        {% else %}
+        <span class="form-hint">L'IA analizzerà l'URL e suggerirà categoria e descrizione appropriate.</span>
+        {% endif %}
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Aggiungi e avvia crawl</button>
+        <a href="{{ url_for('sites_list') }}" class="btn btn-secondary">Annulla</a>
+    </div>
+</form>
+
+<section class="info-panel">
+    <h3>Note</h3>
+    <p><strong>Siti web:</strong> verranno scaricate tutte le pagine HTML, CSS, JavaScript e immagini. I link verranno convertiti per funzionare in locale.</p>
+    <p><strong>YouTube:</strong> verranno scaricati tutti i video del canale con thumbnail e metadati. I video molto lunghi potrebbero richiedere tempo.</p>
+    <p>Alcuni siti potrebbero bloccare il download o avere protezioni anti-bot. In questi casi il mirror potrebbe essere incompleto.</p>
+</section>
+
+{% endblock %}

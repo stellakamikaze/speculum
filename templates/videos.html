@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site.name }} — Video — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div class="header-row">
+        <div>
+            <h1>{{ site.name }}</h1>
+            <p class="header-subtitle">{{ videos|length }} video archiviati</p>
+        </div>
+        <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al canale</a>
+    </div>
+</header>
+
+{% if videos %}
+<div class="videos-grid">
+    {% for video in videos %}
+    <article class="video-card">
+        <a href="{{ url_for('watch_video', video_id=video.id) }}" class="video-thumb-link">
+            {% if video.thumbnail_filename %}
+            <img src="{{ url_for('serve_video', site_id=site.id, video_id=video.video_id, filename=video.thumbnail_filename) }}" 
+                 alt="{{ video.title }}" class="video-thumbnail">
+            {% else %}
+            <div class="video-thumbnail placeholder"></div>
+            {% endif %}
+            <span class="video-duration">{{ video._human_duration(video.duration) }}</span>
+        </a>
+        
+        <div class="video-info">
+            <h3 class="video-title">
+                <a href="{{ url_for('watch_video', video_id=video.id) }}">{{ video.title }}</a>
+            </h3>
+            <div class="video-meta">
+                {% if video.upload_date %}
+                <span>{{ video.upload_date.strftime('%d/%m/%Y') }}</span>
+                {% endif %}
+                <span>{{ video._human_duration(video.duration) }}</span>
+                <span>{{ site._human_size(video.size_bytes) }}</span>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Nessun video scaricato per questo canale.</p>
+    <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}">
+        <button type="submit" class="btn btn-primary">Avvia download video</button>
+    </form>
+</div>
+{% endif %}
+
+{% endblock %}

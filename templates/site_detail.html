@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site.name }} — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div class="header-row">
+        <div>
+            <h1>{{ site.name }}</h1>
+            <p class="header-subtitle">
+                {% if site.site_type == 'youtube' %}
+                <span class="type-badge youtube">YouTube</span>
+                {% else %}
+                <span class="type-badge website">Sito web</span>
+                {% endif %}
+                <a href="{{ site.url }}" target="_blank" rel="noopener">{{ site.url }}</a>
+            </p>
+        </div>
+        <span class="status-badge status-{{ site.status }} large">{{ site.status }}</span>
+    </div>
+</header>
+
+<div class="detail-grid">
+    <section class="detail-panel main-panel">
+        <h2>Informazioni</h2>
+        
+        {% if site.description %}
+        <p class="site-description-full">{{ site.description }}</p>
+        {% endif %}
+        
+        {% if site.ai_generated %}
+        <p class="ai-badge">Metadati generati da IA</p>
+        {% endif %}
+        
+        <dl class="detail-list">
+            <dt>Categoria</dt>
+            <dd>{{ site.category.name if site.category else 'Nessuna' }}</dd>
+            
+            <dt>Stato</dt>
+            <dd>
+                <span class="status-badge status-{{ site.status }}">{{ site.status }}</span>
+                {% if site.error_message %}
+                <span class="error-message">{{ site.error_message }}</span>
+                {% endif %}
+            </dd>
+            
+            <dt>Ultimo crawl</dt>
+            <dd>{{ site.last_crawl.strftime('%d/%m/%Y alle %H:%M') if site.last_crawl else 'Mai eseguito' }}</dd>
+            
+            <dt>Prossimo crawl</dt>
+            <dd>{{ site.next_crawl.strftime('%d/%m/%Y') if site.next_crawl else 'Non programmato' }}</dd>
+            
+            <dt>Intervallo aggiornamento</dt>
+            <dd>Ogni {{ site.crawl_interval_days }} giorni</dd>
+            
+            {% if site.site_type == 'website' %}
+            <dt>Profondità crawl</dt>
+            <dd>{{ 'Illimitata' if site.depth == 0 else site.depth ~ ' livelli' }}</dd>
+            
+            <dt>Risorse esterne</dt>
+            <dd>{{ 'Sì' if site.include_external else 'No' }}</dd>
+            {% endif %}
+            
+            {% if site.status == 'ready' %}
+            <dt>{% if site.site_type == 'youtube' %}Video scaricati{% else %}Pagine scaricate{% endif %}</dt>
+            <dd>{{ site.page_count }}</dd>
+            
+            <dt>Dimensione totale</dt>
+            <dd>{{ site._human_size(site.size_bytes) }}</dd>
+            {% endif %}
+        </dl>
+        
+        <div class="panel-actions">
+            {% if site.status == 'ready' %}
+                {% if site.site_type == 'youtube' %}
+                <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary">Sfoglia video</a>
+                {% else %}
+                <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary" target="_blank">Visita mirror</a>
+                {% endif %}
+            {% endif %}
+            
+            {% if site.status != 'crawling' %}
+            <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary">
+                    {% if site.status == 'ready' %}Aggiorna ora{% else %}Avvia crawl{% endif %}
+                </button>
+            </form>
+            {% else %}
+            <span class="crawling-indicator">Crawl in corso...</span>
+            {% endif %}
+        </div>
+    </section>
+    
+    {% if site.site_type == 'youtube' and videos %}
+    <section class="detail-panel videos-preview">
+        <h2>Video recenti</h2>
+        <div class="videos-mini-grid">
+            {% for video in videos[:6] %}
+            <a href="{{ url_for('watch_video', video_id=video.id) }}" class="video-mini">
+                {% if video.thumbnail_filename %}
+                <img src="{{ url_for('serve_video', site_id=site.id, video_id=video.video_id, filename=video.thumbnail_filename) }}" alt="{{ video.title }}">
+                {% else %}
+                <div class="thumb-placeholder"></div>
+                {% endif %}
+                <span class="video-mini-title">{{ video.title[:50] }}{% if video.title|length > 50 %}...{% endif %}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% if videos|length > 6 %}
+        <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-secondary btn-full">Vedi tutti i {{ videos|length }} video</a>
+        {% endif %}
+    </section>
+    {% endif %}
+    
+    <section class="detail-panel">
+        <h2>Modifica</h2>
+        <form method="POST" action="{{ url_for('update_site', site_id=site.id) }}">
+            <div class="form-group">
+                <label for="name">Nome</label>
+                <input type="text" id="name" name="name" value="{{ site.name }}" class="form-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Descrizione</label>
+                <textarea id="description" name="description" rows="2" class="form-input">{{ site.description or '' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="category_id">Categoria</label>
+                <select id="category_id" name="category_id" class="form-input">
+                    <option value="">— Nessuna —</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if site.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="crawl_interval">Aggiornamento (giorni)</label>
+                <input type="number" id="crawl_interval" name="crawl_interval" value="{{ site.crawl_interval_days }}" min="1" class="form-input">
+            </div>
+            
+            {% if site.site_type == 'website' %}
+            <div class="form-group">
+                <label for="depth">Profondità</label>
+                <input type="number" id="depth" name="depth" value="{{ site.depth }}" min="0" class="form-input">
+                <span class="form-hint">0 = illimitata</span>
+            </div>
+            
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="include_external" {% if site.include_external %}checked{% endif %}>
+                    <span>Scarica risorse esterne</span>
+                </label>
+            </div>
+            {% endif %}
+            
+            <button type="submit" class="btn btn-secondary">Salva modifiche</button>
+        </form>
+    </section>
+    
+    <section class="detail-panel">
+        <h2>Cronologia crawl</h2>
+        {% if logs %}
+        <ul class="log-list">
+            {% for log in logs %}
+            <li class="log-item log-{{ log.status }}">
+                <span class="log-date">{{ log.started_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                <span class="log-status">{{ log.status }}</span>
+                {% if log.status == 'success' %}
+                <span class="log-meta">{{ log.pages_crawled }} {% if site.site_type == 'youtube' %}video{% else %}pagine{% endif %}</span>
+                {% elif log.error_message %}
+                <span class="log-error">{{ log.error_message[:100] }}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-text">Nessun crawl eseguito</p>
+        {% endif %}
+    </section>
+    
+    <section class="detail-panel danger-zone">
+        <h2>Zona pericolosa</h2>
+        <p>Elimina questo sito e tutti i file scaricati. Questa azione è irreversibile.</p>
+        <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" onsubmit="return confirm('Sei sicuro di voler eliminare questo sito e tutto il suo mirror?')">
+            <button type="submit" class="btn btn-danger">Elimina sito</button>
+        </form>
+    </section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if site.status == 'crawling' %}
+<script>
+setInterval(function() {
+    fetch('/api/sites/{{ site.id }}/status')
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== 'crawling') {
+                location.reload();
+            }
+        });
+}, 5000);
+</script>
+{% endif %}
+{% endblock %}

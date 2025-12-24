@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Import massivo — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Import massivo</h1>
+    <p class="header-subtitle">Aggiungi più siti contemporaneamente</p>
+</header>
+
+<form method="POST" class="form-panel form-wide">
+    <div class="form-group">
+        <label for="urls">Lista URL (uno per riga)</label>
+        <textarea id="urls" name="urls" rows="15" required class="form-input mono" placeholder="https://esempio1.it
+https://esempio2.it
+https://www.youtube.com/@canale
+..."></textarea>
+        <span class="form-hint">Supporta siti web e canali YouTube. Gli URL YouTube verranno riconosciuti automaticamente.</span>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label for="category_id">Categoria (opzionale)</label>
+            <select id="category_id" name="category_id" class="form-input">
+                <option value="">— Usa IA o nessuna —</option>
+                {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <span class="form-hint">Se non specificata, l'IA suggerirà categorie per ogni sito</span>
+        </div>
+        
+        <div class="form-group">
+            <label for="crawl_interval">Aggiornamento</label>
+            <select id="crawl_interval" name="crawl_interval" class="form-input">
+                <option value="7">Settimanale</option>
+                <option value="14">Ogni 2 settimane</option>
+                <option value="30" selected>Mensile</option>
+                <option value="90">Trimestrale</option>
+                <option value="365">Annuale</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="include_external">
+            <span>Scarica risorse esterne (immagini, CSS, JS da altri domini)</span>
+        </label>
+        <span class="form-hint">Utile per siti che caricano immagini da CDN o altri server.</span>
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="use_ai" {% if ollama_available %}checked{% else %}disabled{% endif %}>
+            <span>Usa IA per generare categoria e descrizione</span>
+        </label>
+        {% if not ollama_available %}
+        <span class="form-hint warning">Ollama non disponibile. Avvia il servizio per abilitare la categorizzazione automatica.</span>
+        {% else %}
+        <span class="form-hint">L'IA analizzerà ogni URL e suggerirà categoria e descrizione appropriate.</span>
+        {% endif %}
+    </div>
+    
+    <div class="form-group">
+        <label class="checkbox-label">
+            <input type="checkbox" name="start_immediately" checked>
+            <span>Avvia il crawl immediatamente per tutti i siti</span>
+        </label>
+        <span class="form-hint">Se disabilitato, i siti verranno aggiunti ma non scaricati fino all'avvio manuale.</span>
+    </div>
+    
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Importa siti</button>
+        <a href="{{ url_for('sites_list') }}" class="btn btn-secondary">Annulla</a>
+    </div>
+</form>
+
+<section class="info-panel">
+    <h3>Formati URL supportati</h3>
+    <p><strong>Siti web:</strong> qualsiasi URL http/https</p>
+    <p><strong>YouTube:</strong></p>
+    <ul class="format-list">
+        <li><code>https://www.youtube.com/@nomecanale</code></li>
+        <li><code>https://www.youtube.com/channel/UCxxxxx</code></li>
+        <li><code>https://www.youtube.com/c/nomecanale</code></li>
+        <li><code>https://www.youtube.com/playlist?list=PLxxxxx</code></li>
+    </ul>
+</section>
+
+{% endblock %}

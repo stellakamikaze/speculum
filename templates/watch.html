@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ video.title }} — Speculum{% endblock %}
+
+{% block content %}
+<div class="video-player-container">
+    <div class="video-wrapper">
+        <video controls autoplay class="video-player">
+            <source src="{{ url_for('serve_video', site_id=site.id, video_id=video.video_id, filename=video.filename) }}" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+        </video>
+    </div>
+    
+    <div class="video-details">
+        <h1 class="video-page-title">{{ video.title }}</h1>
+        
+        <div class="video-page-meta">
+            <a href="{{ url_for('site_detail', site_id=site.id) }}" class="channel-link">{{ site.name }}</a>
+            {% if video.upload_date %}
+            <span class="meta-separator">•</span>
+            <span>{{ video.upload_date.strftime('%d %B %Y') }}</span>
+            {% endif %}
+            <span class="meta-separator">•</span>
+            <span>{{ video._human_duration(video.duration) }}</span>
+            <span class="meta-separator">•</span>
+            <span>{{ site._human_size(video.size_bytes) }}</span>
+        </div>
+        
+        {% if video.description %}
+        <div class="video-description">
+            <h3>Descrizione</h3>
+            <p>{{ video.description[:2000] }}{% if video.description|length > 2000 %}...{% endif %}</p>
+        </div>
+        {% endif %}
+        
+        <div class="video-actions">
+            <a href="{{ url_for('serve_video', site_id=site.id, video_id=video.video_id, filename=video.filename) }}" 
+               class="btn btn-primary" download>Scarica video</a>
+            <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-secondary">Altri video del canale</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

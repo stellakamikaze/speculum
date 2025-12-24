@@ -1,0 +1,32 @@
+# Database e dati persistenti
+data/
+ollama_data/
+mirrors/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+data_backup_*/
+docker-compose.yml

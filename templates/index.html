@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Catalogo — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <h1>Catalogo mirror</h1>
+    <div class="stats-bar">
+        <div class="stat">
+            <span class="stat-value">{{ stats.total_sites }}</span>
+            <span class="stat-label">siti</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value">{{ stats.youtube_channels }}</span>
+            <span class="stat-label">canali YT</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value">{{ stats.total_videos }}</span>
+            <span class="stat-label">video</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value">{{ stats.ready_sites }}</span>
+            <span class="stat-label">disponibili</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value">{{ "%.1f GB"|format(stats.total_size / 1073741824) }}</span>
+            <span class="stat-label">archiviati</span>
+        </div>
+    </div>
+</header>
+
+{% if categories %}
+{% for category in categories %}
+{% if category.sites %}
+<section class="category-section">
+    <h2 class="category-title">{{ category.name }}</h2>
+    {% if category.description %}
+    <p class="category-description">{{ category.description }}</p>
+    {% endif %}
+    
+    <div class="sites-grid">
+        {% for site in category.sites %}
+        <article class="site-card {{ site.status }} {% if site.site_type == 'youtube' %}youtube{% endif %}">
+            <div class="site-card-header">
+                <h3 class="site-name">{{ site.name }}</h3>
+                <div class="site-badges">
+                    {% if site.site_type == 'youtube' %}
+                    <span class="type-badge youtube">YT</span>
+                    {% endif %}
+                    <span class="site-status status-{{ site.status }}">{{ site.status }}</span>
+                </div>
+            </div>
+            
+            {% if site.description %}
+            <p class="site-description">{{ site.description }}</p>
+            {% endif %}
+            
+            <div class="site-meta">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <span class="meta-item">{{ site.page_count }} video</span>
+                    {% else %}
+                    <span class="meta-item">{{ site.page_count }} pagine</span>
+                    {% endif %}
+                <span class="meta-item">{{ site._human_size(site.size_bytes) }}</span>
+                {% elif site.status == 'crawling' %}
+                <span class="meta-item">Download in corso...</span>
+                {% elif site.status == 'error' %}
+                <span class="meta-item error">Errore</span>
+                {% else %}
+                <span class="meta-item">In attesa</span>
+                {% endif %}
+            </div>
+            
+            <div class="site-actions">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary">Sfoglia video</a>
+                    {% else %}
+                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary" target="_blank">Visita mirror</a>
+                    {% endif %}
+                {% endif %}
+                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Dettagli</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if uncategorized_sites %}
+<section class="category-section">
+    <h2 class="category-title">Senza categoria</h2>
+    
+    <div class="sites-grid">
+        {% for site in uncategorized_sites %}
+        <article class="site-card {{ site.status }} {% if site.site_type == 'youtube' %}youtube{% endif %}">
+            <div class="site-card-header">
+                <h3 class="site-name">{{ site.name }}</h3>
+                <div class="site-badges">
+                    {% if site.site_type == 'youtube' %}
+                    <span class="type-badge youtube">YT</span>
+                    {% endif %}
+                    <span class="site-status status-{{ site.status }}">{{ site.status }}</span>
+                </div>
+            </div>
+            
+            {% if site.description %}
+            <p class="site-description">{{ site.description }}</p>
+            {% endif %}
+            
+            <div class="site-meta">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <span class="meta-item">{{ site.page_count }} video</span>
+                    {% else %}
+                    <span class="meta-item">{{ site.page_count }} pagine</span>
+                    {% endif %}
+                <span class="meta-item">{{ site._human_size(site.size_bytes) }}</span>
+                {% elif site.status == 'crawling' %}
+                <span class="meta-item">Download in corso...</span>
+                {% elif site.status == 'error' %}
+                <span class="meta-item error">Errore</span>
+                {% else %}
+                <span class="meta-item">In attesa</span>
+                {% endif %}
+            </div>
+            
+            <div class="site-actions">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary">Sfoglia video</a>
+                    {% else %}
+                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary" target="_blank">Visita mirror</a>
+                    {% endif %}
+                {% endif %}
+                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Dettagli</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if not categories and not uncategorized_sites %}
+<div class="empty-state">
+    <p>Nessun sito nel catalogo.</p>
+    <div class="empty-actions">
+        <a href="{{ url_for('add_site') }}" class="btn btn-primary">Aggiungi un sito</a>
+        <a href="{{ url_for('bulk_add_sites') }}" class="btn btn-secondary">Import massivo</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
