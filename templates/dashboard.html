@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Crawl — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div class="header-row">
+        <div>
+            <h1>Dashboard Crawl</h1>
+            <p class="header-subtitle">Monitoraggio crawl in tempo reale</p>
+        </div>
+        <div class="header-actions">
+            <button onclick="refreshDashboard()" class="btn btn-secondary">Aggiorna</button>
+        </div>
+    </div>
+
+    <div class="stats-bar dashboard-stats">
+        <div class="stat">
+            <span class="stat-value" id="stat-crawling">{{ stats.crawling }}</span>
+            <span class="stat-label">In corso</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="stat-pending">{{ stats.pending }}</span>
+            <span class="stat-label">In attesa</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="stat-retry">{{ stats.retry_pending }}</span>
+            <span class="stat-label">Retry</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="stat-error">{{ stats.error }}</span>
+            <span class="stat-label">Errori</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="stat-dead">{{ stats.dead }}</span>
+            <span class="stat-label">Dead</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="stat-ready">{{ stats.ready }}</span>
+            <span class="stat-label">Pronti</span>
+        </div>
+    </div>
+</header>
+
+<!-- Crawl attivi con log live -->
+{% if crawling %}
+<section class="dashboard-section">
+    <h2 class="section-title crawling-title">
+        <span class="pulse-dot"></span>
+        Crawl in corso ({{ crawling|length }})
+    </h2>
+
+    <div class="crawl-list">
+        {% for site in crawling %}
+        <div class="crawl-item active" data-site-id="{{ site.id }}">
+            <div class="crawl-info">
+                <div class="crawl-header">
+                    <a href="{{ url_for('site_detail', site_id=site.id) }}" class="crawl-name">{{ site.name }}</a>
+                    <span class="crawl-type type-badge {{ site.site_type }}">{{ site.site_type }}</span>
+                </div>
+                <div class="crawl-url">{{ site.url }}</div>
+                <div class="crawl-meta">
+                    <span class="crawl-elapsed" id="elapsed-{{ site.id }}">In corso...</span>
+                    <span class="crawl-file" id="file-{{ site.id }}"></span>
+                </div>
+            </div>
+            <div class="crawl-actions">
+                <button onclick="showLiveLog({{ site.id }})" class="btn btn-small btn-secondary">Log</button>
+                <form method="POST" action="{{ url_for('stop_site_crawl', site_id=site.id) }}" style="display:inline">
+                    <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Interrompere il crawl?')">Stop</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Log live modal -->
+<div id="log-modal" class="modal" style="display:none">
+    <div class="modal-content log-modal">
+        <div class="modal-header">
+            <h3>Log in tempo reale</h3>
+            <button onclick="closeLogModal()" class="btn-close">&times;</button>
+        </div>
+        <pre class="log-output" id="log-output"></pre>
+        <div class="modal-footer">
+            <label><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
+            <button onclick="closeLogModal()" class="btn btn-secondary">Chiudi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Pending -->
+{% if pending %}
+<section class="dashboard-section">
+    <h2 class="section-title">In attesa ({{ pending|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Tipo</th>
+                    <th>Aggiunto</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in pending %}
+                <tr>
+                    <td><a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a></td>
+                    <td class="url-cell">{{ site.url[:50] }}{% if site.url|length > 50 %}...{% endif %}</td>
+                    <td><span class="type-badge {{ site.site_type }}">{{ site.site_type }}</span></td>
+                    <td>{{ site.created_at.strftime('%d/%m %H:%M') }}</td>
+                    <td class="actions-cell">
+                        <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-small btn-primary">Avvia</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- Retry pending -->
+{% if retry_pending %}
+<section class="dashboard-section">
+    <h2 class="section-title retry-title">In attesa retry ({{ retry_pending|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Tentativi</th>
+                    <th>Prossimo retry</th>
+                    <th>Errore</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in retry_pending %}
+                <tr>
+                    <td><a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a></td>
+                    <td class="url-cell">{{ site.url[:40] }}{% if site.url|length > 40 %}...{% endif %}</td>
+                    <td>{{ site.retry_count }}/3</td>
+                    <td>{{ site.next_crawl.strftime('%d/%m %H:%M') if site.next_crawl else '-' }}</td>
+                    <td class="error-text">{{ site.error_message[:50] if site.error_message else '-' }}{% if site.error_message and site.error_message|length > 50 %}...{% endif %}</td>
+                    <td class="actions-cell">
+                        <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-small btn-primary">Forza retry</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- Errori -->
+{% if error %}
+<section class="dashboard-section">
+    <h2 class="section-title error-title">Errori ({{ error|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Tentativi</th>
+                    <th>Errore</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in error %}
+                <tr>
+                    <td><a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a></td>
+                    <td class="url-cell">{{ site.url[:40] }}{% if site.url|length > 40 %}...{% endif %}</td>
+                    <td>{{ site.retry_count }}/3</td>
+                    <td class="error-text">{{ site.error_message[:80] if site.error_message else '-' }}{% if site.error_message and site.error_message|length > 80 %}...{% endif %}</td>
+                    <td class="actions-cell">
+                        <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-small btn-primary">Retry</button>
+                        </form>
+                        <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-small btn-secondary">Log</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- Dead -->
+{% if dead %}
+<section class="dashboard-section">
+    <h2 class="section-title dead-title">Siti irraggiungibili ({{ dead|length }})</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>URL</th>
+                    <th>Errore</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in dead %}
+                <tr class="dead-row">
+                    <td><a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a></td>
+                    <td class="url-cell">{{ site.url[:50] }}{% if site.url|length > 50 %}...{% endif %}</td>
+                    <td class="error-text">{{ site.error_message[:80] if site.error_message else 'Errore permanente' }}{% if site.error_message and site.error_message|length > 80 %}...{% endif %}</td>
+                    <td class="actions-cell">
+                        <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-small btn-secondary">Riprova</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Eliminare definitivamente?')">Elimina</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<!-- Ultimi completati -->
+{% if ready %}
+<section class="dashboard-section">
+    <h2 class="section-title">Ultimi completati</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Ultimo crawl</th>
+                    <th>Pagine</th>
+                    <th>Dimensione</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for site in ready %}
+                <tr>
+                    <td><a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a></td>
+                    <td>{{ site.last_crawl.strftime('%d/%m/%Y %H:%M') if site.last_crawl else '-' }}</td>
+                    <td>{{ site.page_count }}</td>
+                    <td>{{ site._human_size(site.size_bytes) }}</td>
+                    <td class="actions-cell">
+                        {% if site.site_type == 'youtube' %}
+                        <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-small btn-primary">Video</a>
+                        {% else %}
+                        <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-small btn-primary" target="_blank">Apri</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if not crawling and not pending and not retry_pending and not error and not dead and not ready %}
+<div class="empty-state">
+    <p>Nessun crawl attivo o recente.</p>
+    <a href="{{ url_for('add_site') }}" class="btn btn-primary">Aggiungi un sito</a>
+</div>
+{% endif %}
+
+<script>
+let currentLogSiteId = null;
+let logInterval = null;
+let statsInterval = null;
+
+function refreshDashboard() {
+    location.reload();
+}
+
+function showLiveLog(siteId) {
+    currentLogSiteId = siteId;
+    document.getElementById('log-modal').style.display = 'flex';
+    document.getElementById('log-output').textContent = 'Caricamento...';
+    updateLog();
+    logInterval = setInterval(updateLog, 1000);
+}
+
+function closeLogModal() {
+    document.getElementById('log-modal').style.display = 'none';
+    if (logInterval) {
+        clearInterval(logInterval);
+        logInterval = null;
+    }
+    currentLogSiteId = null;
+}
+
+function updateLog() {
+    if (!currentLogSiteId) return;
+
+    fetch(`/api/crawls/${currentLogSiteId}/log?lines=100`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.lines) {
+                const output = document.getElementById('log-output');
+                output.textContent = data.lines.join('\n');
+                if (document.getElementById('auto-scroll').checked) {
+                    output.scrollTop = output.scrollHeight;
+                }
+            }
+        })
+        .catch(err => console.error('Log error:', err));
+}
+
+function updateActiveCrawls() {
+    fetch('/api/dashboard/stats')
+        .then(r => r.json())
+        .then(data => {
+            // Update stats
+            document.getElementById('stat-crawling').textContent = data.stats.crawling;
+            document.getElementById('stat-pending').textContent = data.stats.pending;
+            document.getElementById('stat-retry').textContent = data.stats.retry_pending;
+            document.getElementById('stat-error').textContent = data.stats.error;
+            document.getElementById('stat-dead').textContent = data.stats.dead;
+            document.getElementById('stat-ready').textContent = data.stats.ready;
+
+            // Update active crawl info
+            data.active.forEach(crawl => {
+                const elapsedEl = document.getElementById(`elapsed-${crawl.site_id}`);
+                if (elapsedEl) {
+                    elapsedEl.textContent = crawl.elapsed_human;
+                }
+            });
+        })
+        .catch(err => console.error('Stats error:', err));
+
+    // Update progress for each active crawl
+    document.querySelectorAll('.crawl-item.active').forEach(item => {
+        const siteId = item.dataset.siteId;
+        fetch(`/api/crawls/${siteId}/progress`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.current_file) {
+                    const fileEl = document.getElementById(`file-${siteId}`);
+                    if (fileEl) {
+                        // Show just filename, not full path
+                        const filename = data.current_file.split('/').pop();
+                        fileEl.textContent = filename.substring(0, 50);
+                    }
+                }
+            })
+            .catch(() => {});
+    });
+}
+
+// Start polling
+statsInterval = setInterval(updateActiveCrawls, 3000);
+updateActiveCrawls();
+
+// Close modal on escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLogModal();
+});
+</script>
+{% endblock %}
