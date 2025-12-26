@@ -274,10 +274,22 @@
     
     <section class="detail-panel danger-zone">
         <h2>Zona pericolosa</h2>
-        <p>Elimina questo sito e tutti i file scaricati. Questa azione è irreversibile.</p>
-        <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" onsubmit="return confirm('Sei sicuro di voler eliminare questo sito e tutto il suo mirror?')">
-            <button type="submit" class="btn btn-danger">Elimina sito</button>
-        </form>
+
+        {% if site.status == 'ready' %}
+        <div class="danger-action">
+            <p>Elimina i file scaricati ma mantieni la voce nel database. Potrai rifare il crawl in seguito.</p>
+            <form method="POST" action="{{ url_for('clear_site_files', site_id=site.id) }}" onsubmit="return confirm('Eliminare tutti i file scaricati?')">
+                <button type="submit" class="btn btn-warning">Elimina file</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="danger-action">
+            <p>Elimina questo sito e tutti i file scaricati. Questa azione è irreversibile.</p>
+            <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" onsubmit="return confirm('Sei sicuro di voler eliminare questo sito e tutto il suo mirror?')">
+                <button type="submit" class="btn btn-danger">Elimina sito</button>
+            </form>
+        </div>
     </section>
 </div>
 

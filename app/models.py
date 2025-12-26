@@ -39,7 +39,7 @@ class Site(db.Model):
     thumbnail_url = db.Column(db.String(500))
     
     # Crawl settings
-    depth = db.Column(db.Integer, default=0)  # 0 = infinite
+    depth = db.Column(db.Integer, default=1)  # 1 = first level only, 0 = infinite
     include_external = db.Column(db.Boolean, default=False)
     
     # Status: pending, crawling, ready, error, retry_pending, dead
