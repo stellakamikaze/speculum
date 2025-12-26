@@ -129,10 +129,16 @@ def get_youtube_channel_info(url):
 def build_wget_command(url, output_path, depth=0, include_external=False):
     cmd = [
         'wget', '--mirror', '--convert-links', '--adjust-extension',
-        '--page-requisites', '--no-parent', '--wait=0.5', '--random-wait',
-        '--tries=3', '--timeout=30', '--no-check-certificate',
+        '--page-requisites', '--no-parent',
+        '--wait=1', '--random-wait',
+        '--tries=5', '--timeout=60', '--read-timeout=60',
+        '--no-check-certificate',
         '--execute=robots=off',
-        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        '--max-redirect=10',
+        '--header=Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        '--header=Accept-Language: en-US,en;q=0.5',
+        '--header=Connection: keep-alive',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         '-P', output_path,
     ]
     if depth > 0:
@@ -140,7 +146,7 @@ def build_wget_command(url, output_path, depth=0, include_external=False):
     if include_external:
         cmd.append('--span-hosts')
         cmd.append('--domains=' + urlparse(url).netloc)
-    cmd.extend(['--reject', '*.exe,*.zip,*.tar.gz,*.rar,*.7z,*.iso,*.dmg'])
+    cmd.extend(['--reject', '*.exe,*.zip,*.tar.gz,*.rar,*.7z,*.iso,*.dmg,*.mp4,*.webm,*.avi'])
     cmd.append(url)
     return cmd
 

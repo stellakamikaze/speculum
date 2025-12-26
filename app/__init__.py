@@ -437,31 +437,60 @@ def create_app():
         return render_template('crawl_log.html', log=log, site=site)
 
     # ==================== MIRROR SERVING ====================
-    
+
+    def find_index_html(base_path):
+        """Recursively find the first index.html in a directory tree"""
+        if not os.path.isdir(base_path):
+            return None
+        # Check if index.html exists directly
+        direct = os.path.join(base_path, 'index.html')
+        if os.path.exists(direct):
+            return direct
+        # Search subdirectories (limited depth)
+        for root, dirs, files in os.walk(base_path):
+            depth = root[len(base_path):].count(os.sep)
+            if depth > 3:  # Limit search depth
+                continue
+            if 'index.html' in files:
+                return os.path.join(root, 'index.html')
+            if 'index.htm' in files:
+                return os.path.join(root, 'index.htm')
+        return None
+
     @app.route('/mirror/<path:site_path>')
     def serve_mirror(site_path):
         """Serve mirrored site files"""
         parts = site_path.split('/', 1)
         domain = parts[0]
-        file_path = parts[1] if len(parts) > 1 else 'index.html'
-        
-        full_path = os.path.join(MIRRORS_BASE_PATH, domain, file_path)
-        
+        file_path = parts[1] if len(parts) > 1 else ''
+
+        domain_path = os.path.join(MIRRORS_BASE_PATH, domain)
+        full_path = os.path.join(domain_path, file_path) if file_path else domain_path
+
+        # If it's a directory, look for index.html
         if os.path.isdir(full_path):
-            full_path = os.path.join(full_path, 'index.html')
-            file_path = os.path.join(file_path, 'index.html')
-        
+            index_path = os.path.join(full_path, 'index.html')
+            if os.path.exists(index_path):
+                full_path = index_path
+            else:
+                # Try to find index.html recursively (for sites with path in URL)
+                found = find_index_html(full_path)
+                if found:
+                    full_path = found
+                else:
+                    abort(404)
+
+        # Try adding .html extension if file doesn't exist
         if not os.path.exists(full_path) and '.' not in os.path.basename(full_path):
             if os.path.exists(full_path + '.html'):
                 full_path = full_path + '.html'
-                file_path = file_path + '.html'
-        
+
         if not os.path.exists(full_path):
             abort(404)
-        
+
         directory = os.path.dirname(full_path)
         filename = os.path.basename(full_path)
-        
+
         return send_from_directory(directory, filename)
     
     @app.route('/video/<int:site_id>/<video_id>/<path:filename>')
