@@ -431,6 +431,8 @@ def crawl_site(site_id):
             from app.models import db
             db.session.commit()
             crawl_youtube(site_id)
+        elif site.crawl_method == 'singlefile':
+            crawl_singlefile(site_id)
         else:
             crawl_website(site_id)
 
@@ -577,3 +579,107 @@ def delete_mirror(url, site_type='website', channel_id=None):
     if os.path.exists(mirror_path):
         shutil.rmtree(mirror_path)
         logger.info(f"Deleted mirror at {mirror_path}")
+
+
+def crawl_singlefile(site_id):
+    """Crawl a JavaScript-heavy site using SingleFile CLI.
+    SingleFile captures the fully-rendered page as a single HTML file with embedded resources.
+    """
+    from app.models import db, Site, CrawlLog
+    from app import create_app
+    app = create_app()
+
+    with app.app_context():
+        site = Site.query.get(site_id)
+        if not site:
+            return
+
+        site.status = 'crawling'
+        site.error_message = None
+        db.session.commit()
+
+        crawl_log = CrawlLog(site_id=site.id, started_at=datetime.utcnow(), status='running')
+        db.session.add(crawl_log)
+        db.session.commit()
+        crawl_log_id = crawl_log.id
+
+        mirror_path = get_mirror_path(site.url)
+        os.makedirs(mirror_path, exist_ok=True)
+
+        # Output filename based on URL
+        parsed = urlparse(site.url)
+        output_filename = f"index.html"
+        output_path = os.path.join(mirror_path, output_filename)
+
+        try:
+            # Check if single-file CLI is available
+            check_result = subprocess.run(['single-file', '--version'], capture_output=True, text=True)
+            if check_result.returncode != 0:
+                raise Exception("SingleFile CLI not installed. Install with: npm install -g single-file-cli")
+
+            # Build SingleFile command
+            cmd = [
+                'single-file',
+                '--browser-executable-path', '/usr/bin/chromium',
+                '--browser-headless',
+                '--browser-args', '["--no-sandbox", "--disable-dev-shm-usage"]',
+                '--filename-conflict-action', 'overwrite',
+                '--output-directory', mirror_path,
+                site.url
+            ]
+
+            logger.info(f"Starting SingleFile crawl for {site.url}")
+
+            # Run SingleFile with timeout
+            timeout = 300  # 5 minutes per page
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+
+            # Check output
+            log_output = result.stdout + '\n' + result.stderr
+            crawl_log = CrawlLog.query.get(crawl_log_id)
+            crawl_log.wget_log = log_output[-5000:]  # Keep last 5000 chars
+
+            if result.returncode == 0:
+                # Rename output file to index.html if needed
+                html_files = [f for f in os.listdir(mirror_path) if f.endswith('.html')]
+                if html_files and html_files[0] != 'index.html':
+                    old_path = os.path.join(mirror_path, html_files[0])
+                    new_path = os.path.join(mirror_path, 'index.html')
+                    os.rename(old_path, new_path)
+
+                size_bytes = get_mirror_size(mirror_path)
+                page_count = len([f for f in os.listdir(mirror_path) if f.endswith('.html')])
+
+                if page_count == 0:
+                    raise Exception("No content captured by SingleFile")
+
+                site.status = 'ready'
+                site.last_crawl = datetime.utcnow()
+                site.next_crawl = datetime.utcnow() + timedelta(days=site.crawl_interval_days)
+                site.size_bytes = size_bytes
+                site.page_count = page_count
+                site.error_message = None
+                site.retry_count = 0
+
+                crawl_log.finished_at = datetime.utcnow()
+                crawl_log.status = 'success'
+                crawl_log.pages_crawled = page_count
+                crawl_log.size_bytes = size_bytes
+                logger.info(f"SingleFile crawl done: {site.url} - {page_count} pages, {size_bytes} bytes")
+            else:
+                raise Exception(f"SingleFile failed: {result.stderr[:500]}")
+
+        except subprocess.TimeoutExpired:
+            handle_crawl_error(site, CrawlLog.query.get(crawl_log_id), 'SingleFile timeout', db)
+        except FileNotFoundError:
+            handle_crawl_error(site, CrawlLog.query.get(crawl_log_id), 'SingleFile CLI not found - install with: npm install -g single-file-cli', db)
+        except Exception as e:
+            crawl_log = CrawlLog.query.get(crawl_log_id)
+            handle_crawl_error(site, crawl_log, str(e)[:1000], db)
+        finally:
+            db.session.commit()

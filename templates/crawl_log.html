@@ -3,10 +3,11 @@
 {% block title %}Log Crawl — {{ site.name }} — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
+<header class="page-header swiss-diagonal">
+    <span class="section-label">Diagnostica</span>
     <div class="header-row">
         <div>
-            <h1>Log Crawl</h1>
+            <h1>Log<br>Crawl</h1>
             <p class="header-subtitle">{{ site.name }} — {{ log.started_at.strftime('%d/%m/%Y %H:%M') }}</p>
         </div>
         <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al sito</a>

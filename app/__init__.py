@@ -79,6 +79,7 @@ def create_app():
             crawl_interval = int(request.form.get('crawl_interval', 30))
             include_external = request.form.get('include_external') == 'on'
             use_ai = request.form.get('use_ai') == 'on'
+            crawl_method = request.form.get('crawl_method', 'wget')
             
             # Validate URL
             if not url.startswith(('http://', 'https://')):
@@ -136,6 +137,7 @@ def create_app():
                 depth=depth,
                 include_external=include_external,
                 crawl_interval_days=crawl_interval,
+                crawl_method=crawl_method,
                 status='pending',
                 ai_generated=use_ai and (ai_category or ai_description)
             )
@@ -326,6 +328,9 @@ def create_app():
         site.depth = int(request.form.get('depth', site.depth))
         site.include_external = request.form.get('include_external') == 'on'
         site.crawl_interval_days = int(request.form.get('crawl_interval', site.crawl_interval_days))
+        crawl_method = request.form.get('crawl_method')
+        if crawl_method in ('wget', 'singlefile'):
+            site.crawl_method = crawl_method
         
         if site.last_crawl:
             site.next_crawl = site.last_crawl + timedelta(days=site.crawl_interval_days)
@@ -756,6 +761,165 @@ def create_app():
         except Exception as e:
             app.logger.error(f"AI metadata generation failed: {e}")
         return redirect(url_for('site_detail', site_id=site_id))
+
+    # ==================== BULK OPERATIONS ====================
+
+    @app.route('/admin/clear-all-files', methods=['POST'])
+    def clear_all_files():
+        """Delete ALL crawled files but keep all site entries in database"""
+        import shutil
+
+        sites = Site.query.filter(Site.status == 'ready').all()
+        cleared_count = 0
+
+        for site in sites:
+            try:
+                # Delete mirror files
+                delete_mirror(site.url, site.site_type, site.channel_id)
+
+                # Reset site status
+                site.status = 'pending'
+                site.size_bytes = 0
+                site.page_count = 0
+                site.screenshot_path = None
+                site.screenshot_date = None
+                site.error_message = None
+                site.retry_count = 0
+
+                cleared_count += 1
+            except Exception as e:
+                app.logger.error(f"Error clearing {site.url}: {e}")
+
+        db.session.commit()
+
+        return redirect(url_for('crawl_dashboard'))
+
+    @app.route('/admin/restart-all-crawls', methods=['POST'])
+    def restart_all_crawls():
+        """Start crawl for all pending sites"""
+        pending_sites = Site.query.filter(Site.status.in_(['pending', 'error', 'dead', 'retry_pending'])).all()
+
+        for site in pending_sites[:10]:  # Limit to 10 at a time
+            site.status = 'pending'
+            site.error_message = None
+            site.retry_count = 0
+            start_crawl(site.id)
+
+        db.session.commit()
+
+        return redirect(url_for('crawl_dashboard'))
+
+    # ==================== MEDIA GALLERY ====================
+
+    @app.route('/sites/<int:site_id>/media')
+    def site_media_gallery(site_id):
+        """View all media files in a mirrored site"""
+        site = Site.query.get_or_404(site_id)
+
+        if site.status != 'ready' or site.site_type == 'youtube':
+            return redirect(url_for('site_detail', site_id=site_id))
+
+        # Get mirror path
+        mirror_path = get_mirror_path(site.url)
+
+        # Find all image files
+        media_files = []
+        image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico')
+
+        if os.path.exists(mirror_path):
+            for root, dirs, files in os.walk(mirror_path):
+                # Skip _speculum directory
+                if '_speculum' in root:
+                    continue
+                for f in files:
+                    if f.lower().endswith(image_extensions):
+                        full_path = os.path.join(root, f)
+                        rel_path = os.path.relpath(full_path, MIRRORS_PATH)
+                        size = os.path.getsize(full_path)
+                        media_files.append({
+                            'name': f,
+                            'path': rel_path,
+                            'size': size,
+                            'size_human': Site._human_size(size)
+                        })
+
+        # Sort by size descending
+        media_files.sort(key=lambda x: x['size'], reverse=True)
+
+        return render_template('media_gallery.html', site=site, media_files=media_files[:200])
+
+    @app.route('/media/<path:file_path>')
+    def serve_media(file_path):
+        """Serve media files from mirrors"""
+        full_path = os.path.join(MIRRORS_PATH, file_path)
+
+        if not os.path.exists(full_path):
+            abort(404)
+
+        directory = os.path.dirname(full_path)
+        filename = os.path.basename(full_path)
+
+        return send_from_directory(directory, filename)
+
+    # ==================== WAYBACK MACHINE INTEGRATION ====================
+
+    @app.route('/sites/<int:site_id>/wayback-screenshot', methods=['POST'])
+    def fetch_wayback_screenshot(site_id):
+        """Fetch screenshot from Wayback Machine"""
+        import requests
+
+        site = Site.query.get_or_404(site_id)
+
+        try:
+            # Check if URL is archived
+            availability_url = f"https://archive.org/wayback/available?url={site.url}"
+            response = requests.get(availability_url, timeout=10)
+            data = response.json()
+
+            if data.get('archived_snapshots', {}).get('closest'):
+                snapshot = data['archived_snapshots']['closest']
+                wayback_url = snapshot['url']
+
+                # Get thumbnail from Wayback
+                # Format: https://web.archive.org/web/TIMESTAMP/im_/URL
+                timestamp = snapshot['timestamp']
+                thumb_url = f"https://web.archive.org/web/{timestamp}im_/{site.url}"
+
+                # Download thumbnail
+                from urllib.parse import urlparse
+                parsed = urlparse(site.url)
+                speculum_dir = os.path.join(MIRRORS_PATH, parsed.netloc, '_speculum')
+                os.makedirs(speculum_dir, exist_ok=True)
+
+                thumb_path = os.path.join(speculum_dir, 'wayback_thumb.jpg')
+
+                img_response = requests.get(thumb_url, timeout=30)
+                if img_response.status_code == 200:
+                    with open(thumb_path, 'wb') as f:
+                        f.write(img_response.content)
+
+                    site.screenshot_path = f"{parsed.netloc}/_speculum/wayback_thumb.jpg"
+                    site.screenshot_date = datetime.utcnow()
+                    db.session.commit()
+
+        except Exception as e:
+            app.logger.error(f"Wayback screenshot failed for {site.url}: {e}")
+
+        return redirect(url_for('site_detail', site_id=site_id))
+
+    @app.route('/api/wayback/<int:site_id>')
+    def api_wayback_info(site_id):
+        """API: Get Wayback Machine info for a site"""
+        import requests
+
+        site = Site.query.get_or_404(site_id)
+
+        try:
+            availability_url = f"https://archive.org/wayback/available?url={site.url}"
+            response = requests.get(availability_url, timeout=10)
+            return jsonify(response.json())
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return app
 

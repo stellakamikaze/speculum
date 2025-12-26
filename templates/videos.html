@@ -3,7 +3,8 @@
 {% block title %}{{ site.name }} — Video — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
+<header class="page-header swiss-noise">
+    <span class="section-label">Archivio Video</span>
     <div class="header-row">
         <div>
             <h1>{{ site.name }}</h1>
@@ -43,7 +44,7 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">
+<div class="empty-state swiss-dots">
     <p>Nessun video scaricato per questo canale.</p>
     <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}">
         <button type="submit" class="btn btn-primary">Avvia download video</button>
