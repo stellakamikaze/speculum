@@ -75,7 +75,7 @@ def create_app():
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
             category_id = request.form.get('category_id')
-            depth = int(request.form.get('depth', 0))
+            depth = int(request.form.get('depth', 1))
             crawl_interval = int(request.form.get('crawl_interval', 30))
             include_external = request.form.get('include_external') == 'on'
             use_ai = request.form.get('use_ai') == 'on'
@@ -236,7 +236,7 @@ def create_app():
                         description=description,
                         category_id=int(site_category_id) if site_category_id else None,
                         site_type=site_type,
-                        depth=0,
+                        depth=1,  # First level only by default
                         include_external=include_external,
                         crawl_interval_days=crawl_interval,
                         status='pending',
@@ -438,60 +438,115 @@ def create_app():
 
     # ==================== MIRROR SERVING ====================
 
-    def find_index_html(base_path):
+    def find_index_html(base_path, max_depth=3):
         """Recursively find the first index.html in a directory tree"""
         if not os.path.isdir(base_path):
             return None
         # Check if index.html exists directly
-        direct = os.path.join(base_path, 'index.html')
-        if os.path.exists(direct):
-            return direct
+        for index_name in ['index.html', 'index.htm']:
+            direct = os.path.join(base_path, index_name)
+            if os.path.exists(direct):
+                return direct
         # Search subdirectories (limited depth)
         for root, dirs, files in os.walk(base_path):
             depth = root[len(base_path):].count(os.sep)
-            if depth > 3:  # Limit search depth
+            if depth > max_depth:
+                dirs[:] = []  # Don't recurse deeper
                 continue
-            if 'index.html' in files:
-                return os.path.join(root, 'index.html')
-            if 'index.htm' in files:
-                return os.path.join(root, 'index.htm')
+            for index_name in ['index.html', 'index.htm']:
+                if index_name in files:
+                    return os.path.join(root, index_name)
+        return None
+
+    def find_file_in_mirror(base_path, file_path):
+        """Find a file in the mirror, handling wget's directory structure quirks"""
+        # Try exact path first
+        full_path = os.path.join(base_path, file_path) if file_path else base_path
+        if os.path.exists(full_path):
+            return full_path
+
+        # wget sometimes creates nested domain directories
+        # e.g., /mirrors/example.com/example.com/page.html
+        if file_path:
+            parts = file_path.split('/')
+            for i in range(len(parts)):
+                nested = os.path.join(base_path, *parts[i:])
+                if os.path.exists(nested):
+                    return nested
+
+        # Try with .html extension
+        if file_path and '.' not in os.path.basename(file_path):
+            for ext in ['.html', '.htm']:
+                with_ext = full_path + ext
+                if os.path.exists(with_ext):
+                    return with_ext
+
         return None
 
     @app.route('/mirror/<path:site_path>')
     def serve_mirror(site_path):
         """Serve mirrored site files"""
+        # Remove trailing slash for consistent handling
+        site_path = site_path.rstrip('/')
+
         parts = site_path.split('/', 1)
         domain = parts[0]
         file_path = parts[1] if len(parts) > 1 else ''
 
         domain_path = os.path.join(MIRRORS_BASE_PATH, domain)
-        full_path = os.path.join(domain_path, file_path) if file_path else domain_path
 
-        # If it's a directory, look for index.html
-        if os.path.isdir(full_path):
-            index_path = os.path.join(full_path, 'index.html')
-            if os.path.exists(index_path):
-                full_path = index_path
+        # Check if domain directory exists
+        if not os.path.isdir(domain_path):
+            abort(404)
+
+        # Find the actual file
+        full_path = find_file_in_mirror(domain_path, file_path)
+
+        # If path not found directly, try to find index.html
+        if full_path is None or os.path.isdir(full_path if full_path else domain_path):
+            search_path = full_path if full_path and os.path.isdir(full_path) else domain_path
+            found = find_index_html(search_path)
+            if found:
+                full_path = found
             else:
-                # Try to find index.html recursively (for sites with path in URL)
-                found = find_index_html(full_path)
-                if found:
-                    full_path = found
-                else:
-                    abort(404)
+                abort(404)
 
-        # Try adding .html extension if file doesn't exist
-        if not os.path.exists(full_path) and '.' not in os.path.basename(full_path):
-            if os.path.exists(full_path + '.html'):
-                full_path = full_path + '.html'
+        # Handle directory - serve index.html
+        if os.path.isdir(full_path):
+            index = find_index_html(full_path)
+            if index:
+                full_path = index
+            else:
+                abort(404)
 
-        if not os.path.exists(full_path):
+        if not full_path or not os.path.exists(full_path):
             abort(404)
 
         directory = os.path.dirname(full_path)
         filename = os.path.basename(full_path)
 
         return send_from_directory(directory, filename)
+
+    @app.route('/sites/<int:site_id>/clear-files', methods=['POST'])
+    def clear_site_files(site_id):
+        """Delete crawled files but keep database entry"""
+        site = Site.query.get_or_404(site_id)
+
+        # Delete mirror from disk
+        delete_mirror(site.url, site.site_type, site.channel_id)
+
+        # Reset site status and stats
+        site.status = 'pending'
+        site.size_bytes = 0
+        site.page_count = 0
+        site.screenshot_path = None
+        site.screenshot_date = None
+        site.error_message = None
+        site.retry_count = 0
+
+        db.session.commit()
+
+        return redirect(url_for('site_detail', site_id=site_id))
     
     @app.route('/video/<int:site_id>/<video_id>/<path:filename>')
     def serve_video(site_id, video_id, filename):

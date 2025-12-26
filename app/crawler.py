@@ -6,6 +6,7 @@ import re
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from threading import Thread, Lock
+from queue import Queue, Empty
 import logging
 import signal
 
@@ -126,7 +127,8 @@ def get_youtube_channel_info(url):
     return None
 
 
-def build_wget_command(url, output_path, depth=0, include_external=False):
+def build_wget_command(url, output_path, depth=1, include_external=False):
+    """Build wget command. Default depth=1 means only first level (homepage + direct links)"""
     cmd = [
         'wget', '--mirror', '--convert-links', '--adjust-extension',
         '--page-requisites', '--no-parent',
@@ -141,7 +143,10 @@ def build_wget_command(url, output_path, depth=0, include_external=False):
         '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         '-P', output_path,
     ]
-    if depth > 0:
+    # depth=0 means infinite, depth>0 limits crawl depth
+    if depth == 0:
+        pass  # No -l flag = infinite depth
+    else:
         cmd.extend(['-l', str(depth)])
     if include_external:
         cmd.append('--span-hosts')
@@ -149,6 +154,20 @@ def build_wget_command(url, output_path, depth=0, include_external=False):
     cmd.extend(['--reject', '*.exe,*.zip,*.tar.gz,*.rar,*.7z,*.iso,*.dmg,*.mp4,*.webm,*.avi'])
     cmd.append(url)
     return cmd
+
+
+def _output_reader(pipe, queue):
+    """Thread function to read process output without blocking"""
+    try:
+        for line in iter(pipe.readline, ''):
+            queue.put(line)
+    except Exception:
+        pass
+    finally:
+        try:
+            pipe.close()
+        except Exception:
+            pass
 
 
 def handle_crawl_error(site, crawl_log, error_message, db):
@@ -206,6 +225,11 @@ def crawl_website(site_id):
                 bufsize=1
             )
 
+            # Set up non-blocking output reading via queue
+            output_queue = Queue()
+            reader_thread = Thread(target=_output_reader, args=(process.stdout, output_queue), daemon=True)
+            reader_thread.start()
+
             # Register active crawl
             with crawls_lock:
                 active_crawls[site_id] = {
@@ -215,14 +239,43 @@ def crawl_website(site_id):
                     'crawl_log_id': crawl_log_id
                 }
 
-            # Read output in real-time
+            # Read output non-blocking with timeout
             log_buffer = []
-            try:
-                while True:
-                    line = process.stdout.readline()
-                    if not line and process.poll() is not None:
-                        break
+            start_time = datetime.utcnow()
+            last_output_time = datetime.utcnow()
+            no_output_timeout = 300  # 5 minutes without output = stalled
+
+            while True:
+                # Check if process finished
+                if process.poll() is not None:
+                    # Drain remaining output
+                    while True:
+                        try:
+                            line = output_queue.get_nowait()
+                            if line:
+                                log_buffer.append(line.strip())
+                        except Empty:
+                            break
+                    break
+
+                # Check total timeout
+                elapsed = (datetime.utcnow() - start_time).total_seconds()
+                if elapsed > timeout:
+                    process.kill()
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+
+                # Check stall timeout (no output for too long)
+                stall_time = (datetime.utcnow() - last_output_time).total_seconds()
+                if stall_time > no_output_timeout:
+                    logger.warning(f"Crawl stalled for {site.url}, no output for {no_output_timeout}s")
+                    process.kill()
+                    raise Exception(f"Crawl stalled - no output for {no_output_timeout}s")
+
+                # Read available output (non-blocking)
+                try:
+                    line = output_queue.get(timeout=1.0)
                     if line:
+                        last_output_time = datetime.utcnow()
                         log_buffer.append(line.strip())
                         # Keep last 500 lines in memory for real-time viewing
                         with crawls_lock:
@@ -230,15 +283,11 @@ def crawl_website(site_id):
                                 active_crawls[site_id]['log_lines'].append(line.strip())
                                 if len(active_crawls[site_id]['log_lines']) > 500:
                                     active_crawls[site_id]['log_lines'] = active_crawls[site_id]['log_lines'][-500:]
-            except Exception as e:
-                logger.warning(f"Error reading wget output: {e}")
+                except Empty:
+                    pass  # No output available, continue loop
 
-            # Wait for process with timeout
-            try:
-                process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                raise
+            # Wait for reader thread to finish
+            reader_thread.join(timeout=5)
 
             returncode = process.returncode
 
