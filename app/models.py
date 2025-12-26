@@ -42,16 +42,19 @@ class Site(db.Model):
     depth = db.Column(db.Integer, default=0)  # 0 = infinite
     include_external = db.Column(db.Boolean, default=False)
     
-    # Status
-    status = db.Column(db.String(50), default='pending')  # pending, crawling, ready, error
+    # Status: pending, crawling, ready, error, retry_pending, dead
+    status = db.Column(db.String(50), default='pending')
     last_crawl = db.Column(db.DateTime)
     next_crawl = db.Column(db.DateTime)
     crawl_interval_days = db.Column(db.Integer, default=30)
-    
+
     # Stats
     size_bytes = db.Column(db.BigInteger, default=0)
     page_count = db.Column(db.Integer, default=0)  # For websites: pages, for YouTube: videos
     error_message = db.Column(db.Text)
+
+    # Retry tracking
+    retry_count = db.Column(db.Integer, default=0)
     
     # AI-generated metadata
     ai_generated = db.Column(db.Boolean, default=False)
@@ -79,6 +82,7 @@ class Site(db.Model):
             'size_human': self._human_size(self.size_bytes),
             'page_count': self.page_count,
             'error_message': self.error_message,
+            'retry_count': self.retry_count,
             'mirror_path': self._get_mirror_path()
         }
     

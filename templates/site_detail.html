@@ -38,7 +38,14 @@
             
             <dt>Stato</dt>
             <dd>
-                <span class="status-badge status-{{ site.status }}">{{ site.status }}</span>
+                <span class="status-badge status-{{ site.status }}">
+                    {% if site.status == 'retry_pending' %}In attesa retry
+                    {% elif site.status == 'dead' %}Irraggiungibile
+                    {% else %}{{ site.status }}{% endif %}
+                </span>
+                {% if site.retry_count and site.retry_count > 0 %}
+                <span class="retry-count">(tentativi: {{ site.retry_count }}/3)</span>
+                {% endif %}
                 {% if site.error_message %}
                 <span class="error-message">{{ site.error_message }}</span>
                 {% endif %}

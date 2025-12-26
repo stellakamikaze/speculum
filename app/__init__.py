@@ -167,20 +167,20 @@ def create_app():
             include_external = request.form.get('include_external') == 'on'
             use_ai = request.form.get('use_ai') == 'on'
             start_immediately = request.form.get('start_immediately') == 'on'
-            
-            # Funzione per estrarre URL da righe miste
-            def extract_url(line):
-                import re
-                url_pattern = r'https?://[^\s\)\]"<>]+'
-                match = re.search(url_pattern, line)
-                if match:
-                    return match.group(0).rstrip('.,;:')
-                return None
-            
-            # Parse URLs (one per line)
+
+            # Use improved URL extraction and normalization
+            from app.utils import extract_url, normalize_url, validate_url
+
+            # Parse URLs (one per line) with improved validation
             raw_lines = [u.strip() for u in urls_text.split('\n') if u.strip()]
-            urls = [extract_url(line) for line in raw_lines]
-            urls = [u for u in urls if u]  # Rimuovi None
+            urls = []
+            for line in raw_lines:
+                extracted = extract_url(line)
+                if extracted:
+                    normalized = normalize_url(extracted)
+                    is_valid, _ = validate_url(normalized)
+                    if is_valid:
+                        urls.append(normalized)
             
             results = {
                 'added': [],
@@ -192,10 +192,7 @@ def create_app():
             existing_categories = [c.name for c in Category.query.all()]
             
             for url in urls:
-                # Validate URL
-                if not url.startswith(('http://', 'https://')):
-                    url = 'https://' + url
-                
+                # URL is already validated and normalized by utils functions
                 # Check for duplicates
                 existing = Site.query.filter_by(url=url).first()
                 if existing:

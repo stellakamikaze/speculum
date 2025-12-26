@@ -65,13 +65,17 @@
                 <span class="meta-item">{{ site._human_size(site.size_bytes) }}</span>
                 {% elif site.status == 'crawling' %}
                 <span class="meta-item">Download in corso...</span>
+                {% elif site.status == 'retry_pending' %}
+                <span class="meta-item">Retry {{ site.retry_count }}/3 in attesa</span>
+                {% elif site.status == 'dead' %}
+                <span class="meta-item error">Sito irraggiungibile</span>
                 {% elif site.status == 'error' %}
                 <span class="meta-item error">Errore</span>
                 {% else %}
                 <span class="meta-item">In attesa</span>
                 {% endif %}
             </div>
-            
+
             <div class="site-actions">
                 {% if site.status == 'ready' %}
                     {% if site.site_type == 'youtube' %}
@@ -121,13 +125,17 @@
                 <span class="meta-item">{{ site._human_size(site.size_bytes) }}</span>
                 {% elif site.status == 'crawling' %}
                 <span class="meta-item">Download in corso...</span>
+                {% elif site.status == 'retry_pending' %}
+                <span class="meta-item">Retry {{ site.retry_count }}/3 in attesa</span>
+                {% elif site.status == 'dead' %}
+                <span class="meta-item error">Sito irraggiungibile</span>
                 {% elif site.status == 'error' %}
                 <span class="meta-item error">Errore</span>
                 {% else %}
                 <span class="meta-item">In attesa</span>
                 {% endif %}
             </div>
-            
+
             <div class="site-actions">
                 {% if site.status == 'ready' %}
                     {% if site.site_type == 'youtube' %}

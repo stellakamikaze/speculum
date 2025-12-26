@@ -1,33 +1,86 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
+from apscheduler.triggers.interval import IntervalTrigger
+from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
 
+# Configuration
+STUCK_CRAWL_THRESHOLD_HOURS = 6  # Mark crawl as stuck after this many hours
+
 
 def check_scheduled_crawls():
-    """Check for sites that need to be crawled"""
+    """Check for sites that need to be crawled (regular schedule)"""
     from app.models import db, Site
     from app.crawler import start_crawl
     from app import create_app
-    
+
     app = create_app()
-    
+
     with app.app_context():
         now = datetime.utcnow()
-        
-        # Find sites due for crawl
+
+        # Find sites due for regular scheduled crawl
         sites = Site.query.filter(
             Site.next_crawl <= now,
             Site.status.in_(['ready', 'error'])  # Don't re-crawl if already crawling
         ).all()
-        
+
         for site in sites:
             logger.info(f"Starting scheduled crawl for {site.url}")
             start_crawl(site.id)
+
+
+def process_retry_queue():
+    """Process sites in retry_pending status that are due for retry"""
+    from app.models import db, Site
+    from app.crawler import start_crawl
+    from app import create_app
+
+    app = create_app()
+
+    with app.app_context():
+        now = datetime.utcnow()
+
+        # Find sites in retry_pending that are due for retry
+        sites = Site.query.filter(
+            Site.status == 'retry_pending',
+            Site.next_crawl <= now
+        ).all()
+
+        for site in sites:
+            logger.info(f"Processing retry for {site.url} (attempt {site.retry_count + 1})")
+            start_crawl(site.id)
+
+
+def reset_stuck_crawls():
+    """Reset crawls that have been stuck in 'crawling' status for too long"""
+    from app.models import db, Site
+    from app import create_app
+
+    app = create_app()
+
+    with app.app_context():
+        threshold = datetime.utcnow() - timedelta(hours=STUCK_CRAWL_THRESHOLD_HOURS)
+
+        # Find sites stuck in crawling status
+        stuck_sites = Site.query.filter(
+            Site.status == 'crawling',
+            Site.updated_at < threshold
+        ).all()
+
+        for site in stuck_sites:
+            logger.warning(f"Resetting stuck crawl for {site.url} (stuck since {site.updated_at})")
+            site.status = 'error'
+            site.error_message = f"Crawl stuck for more than {STUCK_CRAWL_THRESHOLD_HOURS} hours, reset automatically"
+            site.retry_count = (site.retry_count or 0) + 1
+
+        if stuck_sites:
+            db.session.commit()
+            logger.info(f"Reset {len(stuck_sites)} stuck crawls")
 
 
 def init_scheduler(app):
@@ -40,9 +93,25 @@ def init_scheduler(app):
             id='check_scheduled_crawls',
             replace_existing=True
         )
-        
+
+        # Process retry queue every 5 minutes
+        scheduler.add_job(
+            process_retry_queue,
+            IntervalTrigger(minutes=5),
+            id='process_retry_queue',
+            replace_existing=True
+        )
+
+        # Check for stuck crawls every 30 minutes
+        scheduler.add_job(
+            reset_stuck_crawls,
+            IntervalTrigger(minutes=30),
+            id='reset_stuck_crawls',
+            replace_existing=True
+        )
+
         scheduler.start()
-        logger.info("Scheduler started")
+        logger.info("Scheduler started with retry queue and stuck crawl detection")
 
 
 def shutdown_scheduler():

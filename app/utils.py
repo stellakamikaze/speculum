@@ -1,0 +1,224 @@
+"""
+Utility functions for URL validation and normalization.
+"""
+import re
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Tracking parameters to remove during normalization
+TRACKING_PARAMS = {
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+    'fbclid', 'gclid', 'msclkid', 'dclid',
+    'ref', 'source', 'mc_cid', 'mc_eid',
+    '_ga', '_gl', 'fb_action_ids', 'fb_action_types',
+}
+
+# Regex for extracting URLs from mixed text
+URL_PATTERN = re.compile(
+    r'https?://'  # http:// or https://
+    r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+'  # domain
+    r'[a-zA-Z]{2,}'  # TLD
+    r'(?::\d+)?'  # optional port
+    r'(?:/[^\s\)\]\}"\'<>]*)?',  # optional path
+    re.IGNORECASE
+)
+
+
+def extract_url(text: str) -> str | None:
+    """
+    Extract a valid URL from a line of mixed text.
+
+    Args:
+        text: A line that may contain a URL mixed with other text
+
+    Returns:
+        The extracted URL or None if no valid URL found
+    """
+    if not text or not text.strip():
+        return None
+
+    text = text.strip()
+
+    # Try to find a URL in the text
+    match = URL_PATTERN.search(text)
+    if not match:
+        return None
+
+    url = match.group(0)
+
+    # Strip trailing punctuation that's not part of URL
+    url = url.rstrip('.,;:!?\'"')
+
+    # Handle trailing parentheses (common in markdown)
+    while url.endswith(')') and url.count(')') > url.count('('):
+        url = url[:-1]
+
+    # Validate the extracted URL
+    is_valid, _ = validate_url(url)
+    if not is_valid:
+        return None
+
+    return url
+
+
+def normalize_url(url: str) -> str:
+    """
+    Normalize a URL by:
+    - Converting to lowercase domain
+    - Removing trailing slashes
+    - Removing tracking parameters
+    - Ensuring https when possible
+
+    Args:
+        url: The URL to normalize
+
+    Returns:
+        The normalized URL
+    """
+    if not url:
+        return url
+
+    try:
+        parsed = urlparse(url)
+
+        # Lowercase the domain
+        netloc = parsed.netloc.lower()
+
+        # Remove www. prefix for consistency (optional, comment out if not wanted)
+        # if netloc.startswith('www.'):
+        #     netloc = netloc[4:]
+
+        # Remove tracking parameters
+        if parsed.query:
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            filtered_params = {
+                k: v for k, v in params.items()
+                if k.lower() not in TRACKING_PARAMS
+            }
+            query = urlencode(filtered_params, doseq=True)
+        else:
+            query = ''
+
+        # Remove trailing slash from path (but keep root /)
+        path = parsed.path
+        if path != '/' and path.endswith('/'):
+            path = path.rstrip('/')
+
+        # Reconstruct URL
+        normalized = urlunparse((
+            parsed.scheme,
+            netloc,
+            path,
+            parsed.params,
+            query,
+            ''  # Remove fragment
+        ))
+
+        return normalized
+
+    except Exception as e:
+        logger.warning(f"Failed to normalize URL {url}: {e}")
+        return url
+
+
+def validate_url(url: str) -> tuple[bool, str]:
+    """
+    Validate a URL for basic correctness.
+
+    Args:
+        url: The URL to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not url:
+        return False, "URL vuoto"
+
+    # Must start with http:// or https://
+    if not url.startswith(('http://', 'https://')):
+        return False, "URL deve iniziare con http:// o https://"
+
+    try:
+        parsed = urlparse(url)
+
+        # Must have a valid scheme
+        if parsed.scheme not in ('http', 'https'):
+            return False, "Schema non valido"
+
+        # Must have a domain
+        if not parsed.netloc:
+            return False, "Dominio mancante"
+
+        # Domain must have at least one dot (TLD)
+        if '.' not in parsed.netloc:
+            return False, "Dominio non valido (manca TLD)"
+
+        # Check for common malformed URLs
+        if ' ' in url:
+            return False, "URL contiene spazi"
+
+        if parsed.netloc.startswith('-') or parsed.netloc.endswith('-'):
+            return False, "Dominio non valido"
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Errore parsing URL: {str(e)}"
+
+
+def clean_url_list(urls_text: str) -> list[dict]:
+    """
+    Process a text block containing multiple URLs (one per line).
+
+    Args:
+        urls_text: Multi-line text with URLs
+
+    Returns:
+        List of dicts with 'url', 'valid', 'error' keys
+    """
+    results = []
+    seen_urls = set()
+
+    for line in urls_text.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+
+        extracted = extract_url(line)
+
+        if not extracted:
+            results.append({
+                'original': line[:100],
+                'url': None,
+                'valid': False,
+                'error': 'Nessun URL valido trovato'
+            })
+            continue
+
+        normalized = normalize_url(extracted)
+
+        # Check for duplicates
+        if normalized in seen_urls:
+            results.append({
+                'original': line[:100],
+                'url': normalized,
+                'valid': False,
+                'error': 'URL duplicato'
+            })
+            continue
+
+        is_valid, error = validate_url(normalized)
+
+        if is_valid:
+            seen_urls.add(normalized)
+
+        results.append({
+            'original': line[:100],
+            'url': normalized if is_valid else extracted,
+            'valid': is_valid,
+            'error': error if not is_valid else None
+        })
+
+    return results
