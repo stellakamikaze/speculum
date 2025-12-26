@@ -41,6 +41,7 @@ class Site(db.Model):
     # Crawl settings
     depth = db.Column(db.Integer, default=1)  # 1 = first level only, 0 = infinite
     include_external = db.Column(db.Boolean, default=False)
+    crawl_method = db.Column(db.String(20), default='wget')  # 'wget' or 'singlefile'
     
     # Status: pending, crawling, ready, error, retry_pending, dead
     status = db.Column(db.String(50), default='pending')

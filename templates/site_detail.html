@@ -3,7 +3,8 @@
 {% block title %}{{ site.name }} — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
+<header class="page-header swiss-diagonal">
+    <span class="section-label">Dettaglio Sito</span>
     <div class="header-row">
         <div>
             <h1>{{ site.name }}</h1>
@@ -113,10 +114,18 @@
                 </button>
             </form>
             <form method="POST" action="{{ url_for('generate_screenshot', site_id=site.id) }}" style="display:inline">
-                <button type="submit" class="btn btn-secondary" title="Genera screenshot della homepage">
-                    {% if site.screenshot_path %}Rigenera screenshot{% else %}Genera screenshot{% endif %}
+                <button type="submit" class="btn btn-secondary" title="Genera screenshot locale con Playwright">
+                    {% if site.screenshot_path %}Rigenera screenshot{% else %}Screenshot locale{% endif %}
                 </button>
             </form>
+            <form method="POST" action="{{ url_for('fetch_wayback_screenshot', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary" title="Recupera screenshot da Wayback Machine">
+                    Screenshot Wayback
+                </button>
+            </form>
+            <a href="{{ url_for('site_media_gallery', site_id=site.id) }}" class="btn btn-secondary" title="Visualizza i media archiviati">
+                Galleria media
+            </a>
             {% endif %}
         </div>
     </section>
@@ -234,11 +243,19 @@
             
             {% if site.site_type == 'website' %}
             <div class="form-group">
+                <label for="crawl_method">Metodo crawl</label>
+                <select id="crawl_method" name="crawl_method" class="form-input">
+                    <option value="wget" {% if site.crawl_method == 'wget' %}selected{% endif %}>wget (siti statici)</option>
+                    <option value="singlefile" {% if site.crawl_method == 'singlefile' %}selected{% endif %}>SingleFile (JavaScript/SPA)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="depth">Profondità</label>
                 <input type="number" id="depth" name="depth" value="{{ site.depth }}" min="0" class="form-input">
-                <span class="form-hint">0 = illimitata</span>
+                <span class="form-hint">0 = illimitata (solo wget)</span>
             </div>
-            
+
             <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="include_external" {% if site.include_external %}checked{% endif %}>

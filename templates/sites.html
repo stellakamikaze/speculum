@@ -3,15 +3,16 @@
 {% block title %}Siti — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
+<header class="page-header swiss-noise">
+    <span class="section-label">Gestione</span>
     <div class="header-row">
-        <h1>Gestione siti</h1>
+        <h1>Tutti i<br>Siti</h1>
         <div class="header-actions">
             <a href="{{ url_for('bulk_add_sites') }}" class="btn btn-secondary">Import massivo</a>
             <a href="{{ url_for('add_site') }}" class="btn btn-primary">Aggiungi sito</a>
         </div>
     </div>
-    
+
     <div class="filter-tabs">
         <a href="{{ url_for('sites_list', type='all') }}" class="filter-tab {% if filter_type == 'all' %}active{% endif %}">Tutti</a>
         <a href="{{ url_for('sites_list', type='website') }}" class="filter-tab {% if filter_type == 'website' %}active{% endif %}">Siti web</a>
@@ -66,7 +67,7 @@
     </table>
 </div>
 {% else %}
-<div class="empty-state">
+<div class="empty-state swiss-dots">
     <p>Nessun sito configurato.</p>
     <a href="{{ url_for('add_site') }}" class="btn btn-primary">Aggiungi il primo sito</a>
 </div>
