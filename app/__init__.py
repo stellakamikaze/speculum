@@ -168,8 +168,19 @@ def create_app():
             use_ai = request.form.get('use_ai') == 'on'
             start_immediately = request.form.get('start_immediately') == 'on'
             
+            # Funzione per estrarre URL da righe miste
+            def extract_url(line):
+                import re
+                url_pattern = r'https?://[^\s\)\]"<>]+'
+                match = re.search(url_pattern, line)
+                if match:
+                    return match.group(0).rstrip('.,;:')
+                return None
+            
             # Parse URLs (one per line)
-            urls = [u.strip() for u in urls_text.split('\n') if u.strip()]
+            raw_lines = [u.strip() for u in urls_text.split('\n') if u.strip()]
+            urls = [extract_url(line) for line in raw_lines]
+            urls = [u for u in urls if u]  # Rimuovi None
             
             results = {
                 'added': [],

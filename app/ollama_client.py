@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://ollama:11434')
-OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'phi3:mini')
+OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'tinyllama')
 
 
 def check_ollama_available():
