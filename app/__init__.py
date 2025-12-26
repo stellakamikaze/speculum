@@ -24,7 +24,10 @@ def create_app():
     
     # Import models and utilities
     from app.models import Site, Category, CrawlLog, Video
-    from app.crawler import start_crawl, delete_mirror, get_mirror_path, is_youtube_url, MIRRORS_BASE_PATH
+    from app.crawler import (
+        start_crawl, delete_mirror, get_mirror_path, is_youtube_url, MIRRORS_BASE_PATH,
+        stop_crawl, get_active_crawls, get_crawl_live_log, get_crawl_progress
+    )
     
     # ==================== WEB ROUTES ====================
     
@@ -356,15 +359,83 @@ def create_app():
     def delete_category(category_id):
         """Delete a category (sites become uncategorized)"""
         category = Category.query.get_or_404(category_id)
-        
+
         for site in category.sites:
             site.category_id = None
-        
+
         db.session.delete(category)
         db.session.commit()
-        
+
         return redirect(url_for('categories_list'))
-    
+
+    # ==================== CRAWL DASHBOARD ====================
+
+    @app.route('/dashboard')
+    def crawl_dashboard():
+        """Dashboard showing all crawl statuses"""
+        # Get sites grouped by status
+        crawling = Site.query.filter_by(status='crawling').order_by(Site.updated_at.desc()).all()
+        pending = Site.query.filter_by(status='pending').order_by(Site.created_at.desc()).all()
+        retry_pending = Site.query.filter_by(status='retry_pending').order_by(Site.next_crawl).all()
+        error = Site.query.filter_by(status='error').order_by(Site.updated_at.desc()).all()
+        dead = Site.query.filter_by(status='dead').order_by(Site.updated_at.desc()).all()
+        ready = Site.query.filter_by(status='ready').order_by(Site.last_crawl.desc()).limit(20).all()
+
+        # Get active crawls with live info
+        active = get_active_crawls()
+
+        stats = {
+            'crawling': len(crawling),
+            'pending': len(pending),
+            'retry_pending': len(retry_pending),
+            'error': len(error),
+            'dead': len(dead),
+            'ready': Site.query.filter_by(status='ready').count()
+        }
+
+        return render_template('dashboard.html',
+                               crawling=crawling,
+                               pending=pending,
+                               retry_pending=retry_pending,
+                               error=error,
+                               dead=dead,
+                               ready=ready,
+                               active=active,
+                               stats=stats)
+
+    @app.route('/sites/<int:site_id>/stop', methods=['POST'])
+    def stop_site_crawl(site_id):
+        """Stop an active crawl"""
+        success, message = stop_crawl(site_id)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': success, 'message': message})
+        return redirect(url_for('site_detail', site_id=site_id))
+
+    @app.route('/sites/<int:site_id>/retry', methods=['POST'])
+    def retry_site_crawl(site_id):
+        """Reset error state and retry crawl"""
+        site = Site.query.get_or_404(site_id)
+        if site.status in ('error', 'dead', 'retry_pending'):
+            site.status = 'pending'
+            site.error_message = None
+            site.retry_count = 0
+            db.session.commit()
+            start_crawl(site.id)
+            message = "Retry avviato"
+        else:
+            message = "Il sito non è in stato di errore"
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': message})
+        return redirect(url_for('site_detail', site_id=site_id))
+
+    @app.route('/logs/<int:log_id>')
+    def view_crawl_log(log_id):
+        """View detailed crawl log"""
+        log = CrawlLog.query.get_or_404(log_id)
+        site = Site.query.get(log.site_id)
+        return render_template('crawl_log.html', log=log, site=site)
+
     # ==================== MIRROR SERVING ====================
     
     @app.route('/mirror/<path:site_path>')
@@ -486,7 +557,48 @@ def create_app():
                 'available': False,
                 'error': str(e)
             })
-    
+
+    @app.route('/api/crawls/active')
+    def api_active_crawls():
+        """API: Get all active crawls with live status"""
+        return jsonify(get_active_crawls())
+
+    @app.route('/api/crawls/<int:site_id>/progress')
+    def api_crawl_progress(site_id):
+        """API: Get progress of an active crawl"""
+        progress = get_crawl_progress(site_id)
+        if progress is None:
+            return jsonify({'error': 'No active crawl for this site'}), 404
+        return jsonify(progress)
+
+    @app.route('/api/crawls/<int:site_id>/log')
+    def api_crawl_live_log(site_id):
+        """API: Get live log of an active crawl"""
+        lines = request.args.get('lines', 50, type=int)
+        log_lines = get_crawl_live_log(site_id, lines)
+        if log_lines is None:
+            # Try to get from database if not active
+            log = CrawlLog.query.filter_by(site_id=site_id).order_by(CrawlLog.started_at.desc()).first()
+            if log and log.wget_log:
+                log_lines = log.wget_log.split('\n')[-lines:]
+            else:
+                return jsonify({'error': 'No log available'}), 404
+        return jsonify({'lines': log_lines})
+
+    @app.route('/api/dashboard/stats')
+    def api_dashboard_stats():
+        """API: Get dashboard statistics for polling"""
+        stats = {
+            'crawling': Site.query.filter_by(status='crawling').count(),
+            'pending': Site.query.filter_by(status='pending').count(),
+            'retry_pending': Site.query.filter_by(status='retry_pending').count(),
+            'error': Site.query.filter_by(status='error').count(),
+            'dead': Site.query.filter_by(status='dead').count(),
+            'ready': Site.query.filter_by(status='ready').count()
+        }
+        active = get_active_crawls()
+        return jsonify({'stats': stats, 'active': active})
+
     return app
 
 

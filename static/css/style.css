@@ -1243,8 +1243,236 @@ select.form-input {
     .header-actions {
         flex-direction: column;
     }
-    
+
     .filter-tabs {
         overflow-x: auto;
     }
+}
+
+/* ===========================================
+   DASHBOARD STYLES
+   =========================================== */
+
+.dashboard-stats {
+    flex-wrap: wrap;
+}
+
+.dashboard-section {
+    margin-bottom: 2.5rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.crawling-title { color: var(--warning); border-color: var(--warning); }
+.retry-title { color: #f97316; border-color: #f97316; }
+.error-title { color: var(--error); border-color: var(--error); }
+.dead-title { color: #6b7280; border-color: #6b7280; }
+
+.pulse-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--warning);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* Crawl list items */
+.crawl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.crawl-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.crawl-item.active {
+    border-color: var(--warning);
+    border-left: 3px solid var(--warning);
+}
+
+.crawl-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.crawl-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.crawl-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.crawl-url {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.crawl-meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.crawl-elapsed {
+    color: var(--warning);
+    font-family: var(--font-mono);
+}
+
+.crawl-file {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.crawl-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.dead-row {
+    opacity: 0.7;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-modal {
+    height: 70vh;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.btn-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.modal-footer label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Log output */
+.log-output {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-output.full-log {
+    max-height: 500px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.log-section {
+    margin-top: 1.5rem;
+}
+
+.log-section h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.log-details {
+    max-width: 1000px;
 }

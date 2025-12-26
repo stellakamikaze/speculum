@@ -86,17 +86,79 @@
                 {% endif %}
             {% endif %}
             
-            {% if site.status != 'crawling' %}
+            {% if site.status == 'crawling' %}
+            <form method="POST" action="{{ url_for('stop_site_crawl', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Interrompere il crawl?')">Stop</button>
+            </form>
+            <button onclick="showSiteLog()" class="btn btn-secondary">Log live</button>
+            {% elif site.status in ('error', 'dead', 'retry_pending') %}
+            <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-primary">Riprova</button>
+            </form>
+            <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary">Forza crawl</button>
+            </form>
+            {% else %}
             <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
                 <button type="submit" class="btn btn-secondary">
                     {% if site.status == 'ready' %}Aggiorna ora{% else %}Avvia crawl{% endif %}
                 </button>
             </form>
-            {% else %}
-            <span class="crawling-indicator">Crawl in corso...</span>
             {% endif %}
         </div>
     </section>
+
+    <!-- Log live modal -->
+    <div id="site-log-modal" class="modal" style="display:none">
+        <div class="modal-content log-modal">
+            <div class="modal-header">
+                <h3>Log in tempo reale — {{ site.name }}</h3>
+                <button onclick="closeSiteLog()" class="btn-close">&times;</button>
+            </div>
+            <pre class="log-output" id="site-log-output">Caricamento...</pre>
+            <div class="modal-footer">
+                <label><input type="checkbox" id="site-auto-scroll" checked> Auto-scroll</label>
+                <button onclick="closeSiteLog()" class="btn btn-secondary">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let siteLogInterval = null;
+
+    function showSiteLog() {
+        document.getElementById('site-log-modal').style.display = 'flex';
+        updateSiteLog();
+        siteLogInterval = setInterval(updateSiteLog, 1000);
+    }
+
+    function closeSiteLog() {
+        document.getElementById('site-log-modal').style.display = 'none';
+        if (siteLogInterval) {
+            clearInterval(siteLogInterval);
+            siteLogInterval = null;
+        }
+    }
+
+    function updateSiteLog() {
+        fetch('/api/crawls/{{ site.id }}/log?lines=100')
+            .then(r => r.json())
+            .then(data => {
+                if (data.lines) {
+                    const output = document.getElementById('site-log-output');
+                    output.textContent = data.lines.join('\n');
+                    if (document.getElementById('site-auto-scroll').checked) {
+                        output.scrollTop = output.scrollHeight;
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeSiteLog();
+    });
+    </script>
     
     {% if site.site_type == 'youtube' and videos %}
     <section class="detail-panel videos-preview">
