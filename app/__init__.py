@@ -437,31 +437,60 @@ def create_app():
         return render_template('crawl_log.html', log=log, site=site)
 
     # ==================== MIRROR SERVING ====================
-    
+
+    def find_index_html(base_path):
+        """Recursively find the first index.html in a directory tree"""
+        if not os.path.isdir(base_path):
+            return None
+        # Check if index.html exists directly
+        direct = os.path.join(base_path, 'index.html')
+        if os.path.exists(direct):
+            return direct
+        # Search subdirectories (limited depth)
+        for root, dirs, files in os.walk(base_path):
+            depth = root[len(base_path):].count(os.sep)
+            if depth > 3:  # Limit search depth
+                continue
+            if 'index.html' in files:
+                return os.path.join(root, 'index.html')
+            if 'index.htm' in files:
+                return os.path.join(root, 'index.htm')
+        return None
+
     @app.route('/mirror/<path:site_path>')
     def serve_mirror(site_path):
         """Serve mirrored site files"""
         parts = site_path.split('/', 1)
         domain = parts[0]
-        file_path = parts[1] if len(parts) > 1 else 'index.html'
-        
-        full_path = os.path.join(MIRRORS_BASE_PATH, domain, file_path)
-        
+        file_path = parts[1] if len(parts) > 1 else ''
+
+        domain_path = os.path.join(MIRRORS_BASE_PATH, domain)
+        full_path = os.path.join(domain_path, file_path) if file_path else domain_path
+
+        # If it's a directory, look for index.html
         if os.path.isdir(full_path):
-            full_path = os.path.join(full_path, 'index.html')
-            file_path = os.path.join(file_path, 'index.html')
-        
+            index_path = os.path.join(full_path, 'index.html')
+            if os.path.exists(index_path):
+                full_path = index_path
+            else:
+                # Try to find index.html recursively (for sites with path in URL)
+                found = find_index_html(full_path)
+                if found:
+                    full_path = found
+                else:
+                    abort(404)
+
+        # Try adding .html extension if file doesn't exist
         if not os.path.exists(full_path) and '.' not in os.path.basename(full_path):
             if os.path.exists(full_path + '.html'):
                 full_path = full_path + '.html'
-                file_path = file_path + '.html'
-        
+
         if not os.path.exists(full_path):
             abort(404)
-        
+
         directory = os.path.dirname(full_path)
         filename = os.path.basename(full_path)
-        
+
         return send_from_directory(directory, filename)
     
     @app.route('/video/<int:site_id>/<video_id>/<path:filename>')
@@ -477,7 +506,59 @@ def create_app():
             abort(404)
         
         return send_from_directory(video_path, filename)
-    
+
+    @app.route('/screenshot/<int:site_id>')
+    def serve_screenshot(site_id):
+        """Serve site screenshot"""
+        site = Site.query.get_or_404(site_id)
+        if not site.screenshot_path:
+            abort(404)
+
+        screenshot_full_path = os.path.join(MIRRORS_BASE_PATH, site.screenshot_path)
+        if not os.path.exists(screenshot_full_path):
+            abort(404)
+
+        directory = os.path.dirname(screenshot_full_path)
+        filename = os.path.basename(screenshot_full_path)
+        return send_from_directory(directory, filename)
+
+    @app.route('/thumbnail/<int:site_id>')
+    def serve_thumbnail(site_id):
+        """Serve site thumbnail"""
+        site = Site.query.get_or_404(site_id)
+        if not site.screenshot_path:
+            abort(404)
+
+        # Thumbnail is in same dir as screenshot but named thumbnail.jpg
+        from urllib.parse import urlparse
+        parsed = urlparse(site.url)
+        thumb_path = os.path.join(MIRRORS_BASE_PATH, parsed.netloc, '_speculum', 'thumbnail.jpg')
+
+        if not os.path.exists(thumb_path):
+            # Fallback to full screenshot
+            screenshot_full_path = os.path.join(MIRRORS_BASE_PATH, site.screenshot_path)
+            if os.path.exists(screenshot_full_path):
+                directory = os.path.dirname(screenshot_full_path)
+                filename = os.path.basename(screenshot_full_path)
+                return send_from_directory(directory, filename)
+            abort(404)
+
+        directory = os.path.dirname(thumb_path)
+        filename = os.path.basename(thumb_path)
+        return send_from_directory(directory, filename)
+
+    @app.route('/sites/<int:site_id>/screenshot', methods=['POST'])
+    def generate_screenshot(site_id):
+        """Generate screenshot for a site"""
+        try:
+            from app.screenshot import update_site_screenshot, is_screenshot_available
+            if not is_screenshot_available():
+                return redirect(url_for('site_detail', site_id=site_id))
+            update_site_screenshot(site_id)
+        except Exception as e:
+            app.logger.error(f"Screenshot generation failed: {e}")
+        return redirect(url_for('site_detail', site_id=site_id))
+
     @app.route('/videos/<int:site_id>')
     def channel_videos(site_id):
         """List all videos for a YouTube channel"""
@@ -598,6 +679,28 @@ def create_app():
         }
         active = get_active_crawls()
         return jsonify({'stats': stats, 'active': active})
+
+    @app.route('/api/sites/<int:site_id>/generate-metadata', methods=['POST'])
+    def api_generate_metadata(site_id):
+        """API: Generate AI metadata for a site"""
+        try:
+            from app.ai_metadata import update_site_with_ai_metadata
+            success = update_site_with_ai_metadata(site_id)
+            if success:
+                return jsonify({'success': True, 'message': 'Metadati AI generati'})
+            return jsonify({'success': False, 'message': 'Generazione fallita'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/sites/<int:site_id>/generate-metadata', methods=['POST'])
+    def generate_site_metadata(site_id):
+        """Generate AI metadata for a site (web route)"""
+        try:
+            from app.ai_metadata import update_site_with_ai_metadata
+            update_site_with_ai_metadata(site_id)
+        except Exception as e:
+            app.logger.error(f"AI metadata generation failed: {e}")
+        return redirect(url_for('site_detail', site_id=site_id))
 
     return app
 
