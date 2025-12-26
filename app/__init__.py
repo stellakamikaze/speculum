@@ -506,7 +506,59 @@ def create_app():
             abort(404)
         
         return send_from_directory(video_path, filename)
-    
+
+    @app.route('/screenshot/<int:site_id>')
+    def serve_screenshot(site_id):
+        """Serve site screenshot"""
+        site = Site.query.get_or_404(site_id)
+        if not site.screenshot_path:
+            abort(404)
+
+        screenshot_full_path = os.path.join(MIRRORS_BASE_PATH, site.screenshot_path)
+        if not os.path.exists(screenshot_full_path):
+            abort(404)
+
+        directory = os.path.dirname(screenshot_full_path)
+        filename = os.path.basename(screenshot_full_path)
+        return send_from_directory(directory, filename)
+
+    @app.route('/thumbnail/<int:site_id>')
+    def serve_thumbnail(site_id):
+        """Serve site thumbnail"""
+        site = Site.query.get_or_404(site_id)
+        if not site.screenshot_path:
+            abort(404)
+
+        # Thumbnail is in same dir as screenshot but named thumbnail.jpg
+        from urllib.parse import urlparse
+        parsed = urlparse(site.url)
+        thumb_path = os.path.join(MIRRORS_BASE_PATH, parsed.netloc, '_speculum', 'thumbnail.jpg')
+
+        if not os.path.exists(thumb_path):
+            # Fallback to full screenshot
+            screenshot_full_path = os.path.join(MIRRORS_BASE_PATH, site.screenshot_path)
+            if os.path.exists(screenshot_full_path):
+                directory = os.path.dirname(screenshot_full_path)
+                filename = os.path.basename(screenshot_full_path)
+                return send_from_directory(directory, filename)
+            abort(404)
+
+        directory = os.path.dirname(thumb_path)
+        filename = os.path.basename(thumb_path)
+        return send_from_directory(directory, filename)
+
+    @app.route('/sites/<int:site_id>/screenshot', methods=['POST'])
+    def generate_screenshot(site_id):
+        """Generate screenshot for a site"""
+        try:
+            from app.screenshot import update_site_screenshot, is_screenshot_available
+            if not is_screenshot_available():
+                return redirect(url_for('site_detail', site_id=site_id))
+            update_site_screenshot(site_id)
+        except Exception as e:
+            app.logger.error(f"Screenshot generation failed: {e}")
+        return redirect(url_for('site_detail', site_id=site_id))
+
     @app.route('/videos/<int:site_id>')
     def channel_videos(site_id):
         """List all videos for a YouTube channel"""

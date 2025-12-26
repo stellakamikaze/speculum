@@ -112,9 +112,24 @@
                     {% if site.ai_generated %}Rigenera AI{% else %}Genera AI{% endif %}
                 </button>
             </form>
+            <form method="POST" action="{{ url_for('generate_screenshot', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary" title="Genera screenshot della homepage">
+                    {% if site.screenshot_path %}Rigenera screenshot{% else %}Genera screenshot{% endif %}
+                </button>
+            </form>
             {% endif %}
         </div>
     </section>
+
+    {% if site.screenshot_path %}
+    <section class="detail-panel">
+        <h2>Screenshot</h2>
+        <a href="{{ url_for('serve_screenshot', site_id=site.id) }}" target="_blank">
+            <img src="{{ url_for('serve_screenshot', site_id=site.id) }}" alt="Screenshot" class="site-screenshot">
+        </a>
+        <p class="screenshot-date">Catturato: {{ site.screenshot_date.strftime('%d/%m/%Y %H:%M') if site.screenshot_date else 'N/D' }}</p>
+    </section>
+    {% endif %}
 
     <!-- Log live modal -->
     <div id="site-log-modal" class="modal" style="display:none">

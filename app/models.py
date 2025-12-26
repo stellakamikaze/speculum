@@ -58,7 +58,11 @@ class Site(db.Model):
     
     # AI-generated metadata
     ai_generated = db.Column(db.Boolean, default=False)
-    
+
+    # Screenshot
+    screenshot_path = db.Column(db.String(500))  # Relative path to screenshot
+    screenshot_date = db.Column(db.DateTime)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -83,6 +87,7 @@ class Site(db.Model):
             'page_count': self.page_count,
             'error_message': self.error_message,
             'retry_count': self.retry_count,
+            'screenshot_path': self.screenshot_path,
             'mirror_path': self._get_mirror_path()
         }
     
