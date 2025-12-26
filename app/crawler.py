@@ -266,6 +266,16 @@ def crawl_website(site_id):
                 crawl_log.pages_crawled = page_count
                 crawl_log.size_bytes = size_bytes
                 logger.info(f"Crawl done: {site.url} - {page_count} pages")
+
+                # Generate AI metadata if not already done
+                if not site.ai_generated:
+                    try:
+                        from app.ai_metadata import update_site_with_ai_metadata
+                        db.session.commit()  # Commit crawl success first
+                        update_site_with_ai_metadata(site_id)
+                        logger.info(f"AI metadata generated for {site.url}")
+                    except Exception as e:
+                        logger.warning(f"AI metadata generation failed for {site.url}: {e}")
             else:
                 raise Exception(f"wget failed with code {returncode}")
 

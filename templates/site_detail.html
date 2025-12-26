@@ -105,6 +105,14 @@
                 </button>
             </form>
             {% endif %}
+
+            {% if site.status == 'ready' and site.site_type == 'website' %}
+            <form method="POST" action="{{ url_for('generate_site_metadata', site_id=site.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-secondary" title="Genera nome, descrizione e categoria con AI">
+                    {% if site.ai_generated %}Rigenera AI{% else %}Genera AI{% endif %}
+                </button>
+            </form>
+            {% endif %}
         </div>
     </section>
 

@@ -628,6 +628,28 @@ def create_app():
         active = get_active_crawls()
         return jsonify({'stats': stats, 'active': active})
 
+    @app.route('/api/sites/<int:site_id>/generate-metadata', methods=['POST'])
+    def api_generate_metadata(site_id):
+        """API: Generate AI metadata for a site"""
+        try:
+            from app.ai_metadata import update_site_with_ai_metadata
+            success = update_site_with_ai_metadata(site_id)
+            if success:
+                return jsonify({'success': True, 'message': 'Metadati AI generati'})
+            return jsonify({'success': False, 'message': 'Generazione fallita'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/sites/<int:site_id>/generate-metadata', methods=['POST'])
+    def generate_site_metadata(site_id):
+        """Generate AI metadata for a site (web route)"""
+        try:
+            from app.ai_metadata import update_site_with_ai_metadata
+            update_site_with_ai_metadata(site_id)
+        except Exception as e:
+            app.logger.error(f"AI metadata generation failed: {e}")
+        return redirect(url_for('site_detail', site_id=site_id))
+
     return app
 
 
