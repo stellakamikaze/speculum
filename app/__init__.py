@@ -4,7 +4,8 @@ import secrets
 import logging
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, abort, session, g, Response
-from urllib.parse import urlparse
+from markupsafe import escape as html_escape
+from urllib.parse import urlparse, quote as url_quote
 from datetime import datetime, timedelta
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
@@ -37,6 +38,12 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///speculum.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+    # Secure cookie configuration for production
+    is_production = os.environ.get('FLASK_ENV') == 'production'
+    app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production
+    app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
     # Telegram webhook configuration
     app.config['TELEGRAM_BOT_TOKEN'] = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -143,23 +150,61 @@ def create_app():
         """Load current user into g object for templates"""
         g.user = get_current_user()
 
+    @app.after_request
+    def add_security_headers(response):
+        """Add security headers to all responses"""
+        # Prevent MIME type sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Prevent clickjacking
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        # XSS protection (legacy browsers)
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        # Control referrer information
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        # Permissions policy (disable unnecessary features)
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        # HSTS for HTTPS (1 year)
+        if request.is_secure:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+
     @app.context_processor
     def inject_user():
         """Make user available in all templates"""
         return {'current_user': g.get('user')}
 
-    # Create default admin if no users exist
+    # Create admin user from environment variables (no insecure defaults)
     with app.app_context():
-        if User.query.count() == 0:
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'admin')
-            admin = User(
-                username='admin',
-                role='admin'
-            )
-            admin.set_password(admin_password)
-            db.session.add(admin)
-            db.session.commit()
-            logger.info("Created default admin user (username: admin)")
+        admin_username = os.environ.get('ADMIN_USERNAME')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+
+        if admin_username and admin_password:
+            existing_admin = User.query.filter_by(username=admin_username).first()
+            if not existing_admin:
+                # Check password strength
+                if len(admin_password) < 8:
+                    logger.warning("ADMIN_PASSWORD should be at least 8 characters for security")
+
+                admin = User(
+                    username=admin_username,
+                    role='admin'
+                )
+                admin.set_password(admin_password)
+                db.session.add(admin)
+                db.session.commit()
+                logger.info(f"Created admin user: {admin_username}")
+        elif User.query.count() == 0:
+            # No admin configured and no users exist - warn but don't create insecure default
+            if os.environ.get('FLASK_ENV') == 'production':
+                logger.error("CRITICAL: No admin user configured! Set ADMIN_USERNAME and ADMIN_PASSWORD")
+            else:
+                # Development only: create a random password
+                random_pass = secrets.token_urlsafe(12)
+                admin = User(username='admin', role='admin')
+                admin.set_password(random_pass)
+                db.session.add(admin)
+                db.session.commit()
+                logger.warning(f"DEV MODE: Created admin with random password: {random_pass}")
 
     @app.route('/login', methods=['GET', 'POST'])
     @limiter.limit("10 per minute")
@@ -774,16 +819,18 @@ def create_app():
                         full_path = os.path.join(root, f)
                         with open(full_path, 'r', encoding='utf-8', errors='ignore') as hf:
                             content = hf.read(4096)  # Read first 4KB
-                            import re
                             match = re.search(r'<title[^>]*>([^<]+)</title>', content, re.IGNORECASE)
                             if match:
                                 title = match.group(1).strip()[:100]
-                    except:
+                    except Exception:
                         pass
                     html_files.append({'path': rel_path, 'title': title})
 
         # Sort by path
         html_files.sort(key=lambda x: x['path'])
+
+        # Escape domain for safe HTML output
+        safe_domain = html_escape(domain)
 
         # Generate HTML
         html = f'''<!DOCTYPE html>
@@ -791,7 +838,7 @@ def create_app():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archivio: {domain}</title>
+    <title>Archivio: {safe_domain}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; padding: 2rem; max-width: 1200px; margin: 0 auto; background: #0a0a0a; color: #e0e0e0; }}
@@ -808,15 +855,19 @@ def create_app():
 </head>
 <body>
     <a href="/" class="back-link">← Torna a Speculum</a>
-    <h1>📁 {domain}</h1>
+    <h1>📁 {safe_domain}</h1>
     <p class="subtitle">Archivio automatico generato da Speculum</p>
     <div class="stats">{len(html_files)} pagine archiviate</div>
     <ul class="file-list">
 '''
         for item in html_files:
+            # Escape title and path for safe HTML output, URL-encode path for href
+            safe_title = html_escape(item['title'])
+            safe_path = html_escape(item['path'])
+            url_path = url_quote(item['path'], safe='/')
             html += f'''        <li class="file-item">
-            <a href="{item['path']}">{item['title']}</a>
-            <div class="file-path">{item['path']}</div>
+            <a href="{url_path}">{safe_title}</a>
+            <div class="file-path">{safe_path}</div>
         </li>
 '''
         html += '''    </ul>
@@ -1275,6 +1326,7 @@ def create_app():
     # ==================== WAYBACK MACHINE INTEGRATION ====================
 
     @app.route('/sites/<int:site_id>/wayback-screenshot', methods=['POST'])
+    @edit_required
     def fetch_wayback_screenshot(site_id):
         """Fetch screenshot from Wayback Machine"""
         import requests

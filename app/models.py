@@ -2,6 +2,9 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Use scrypt for stronger password hashing (more resistant to GPU attacks)
+PASSWORD_HASH_METHOD = 'scrypt:32768:8:1'  # N=32768, r=8, p=1
+
 db = SQLAlchemy()
 
 
@@ -22,7 +25,7 @@ class User(db.Model):
     mirror_requests = db.relationship('MirrorRequest', backref='requester', lazy=True, foreign_keys='MirrorRequest.user_id')
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method=PASSWORD_HASH_METHOD)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)

@@ -6,17 +6,24 @@ services:
     ports:
       - "5050:5000"
     environment:
+      # SECURITY: Generate a strong secret key for production
+      # Use: python -c "import secrets; print(secrets.token_hex(32))"
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      # SECURITY: Admin credentials (REQUIRED for production)
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      # Database
       - DATABASE_URL=sqlite:////app/instance/speculum.db
       - MIRRORS_PATH=/mirrors
+      # Ollama AI (optional)
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-tinyllama}
+      # Environment: set to 'production' for public deployment
       - FLASK_ENV=${FLASK_ENV:-development}
       # Telegram notifications (optional)
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      # Rate limiting
+      # Rate limiting (requests per minute)
       - RATE_LIMIT=${RATE_LIMIT:-60}
     volumes:
       - ./data:/app/instance
