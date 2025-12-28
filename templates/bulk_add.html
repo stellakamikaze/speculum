@@ -3,12 +3,14 @@
 {% block title %}Import massivo — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
-    <h1>Import massivo</h1>
+<header class="page-header swiss-diagonal">
+    <span class="section-label">Bulk Import</span>
+    <h1>Import<br>Massivo</h1>
     <p class="header-subtitle">Aggiungi più siti contemporaneamente</p>
 </header>
 
 <form method="POST" class="form-panel form-wide">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="urls">Lista URL (uno per riga)</label>
         <textarea id="urls" name="urls" rows="15" required class="form-input mono" placeholder="https://esempio1.it

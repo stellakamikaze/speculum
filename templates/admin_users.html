@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Utenti — Speculum{% endblock %}
+
+{% block content %}
+<header class="section-header">
+    <span class="section-number">01.</span>
+    <div class="section-title">
+        <h1>Gestione <span class="accent">Utenti</span></h1>
+    </div>
+</header>
+
+<section class="detail-panel">
+    <div class="panel-header">
+        <h2>Nuovo Utente</h2>
+    </div>
+    <form method="POST" action="{{ url_for('admin_add_user') }}" class="site-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md);">
+            <div class="form-group">
+                <label class="form-label" for="username">Username *</label>
+                <input type="text" name="username" id="username" class="form-input" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" name="email" id="email" class="form-input" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password *</label>
+                <input type="password" name="password" id="password" class="form-input" required autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="role">Ruolo</label>
+                <select name="role" id="role" class="form-input">
+                    <option value="viewer">Viewer (solo lettura)</option>
+                    <option value="user" selected>User (può modificare)</option>
+                    <option value="admin">Admin (accesso completo)</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Aggiungi Utente</button>
+        </div>
+    </form>
+</section>
+
+<section class="detail-panel">
+    <div class="panel-header">
+        <h2>Utenti Registrati</h2>
+        <span class="stats-count">{{ users|length }}</span>
+    </div>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Ruolo</th>
+                <th>Stato</th>
+                <th>Ultimo accesso</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>
+                    <strong>{{ user.username }}</strong>
+                    {% if user.id == current_user.id %}
+                    <span class="status-badge" style="font-size: 0.7rem;">TU</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.email or '-' }}</td>
+                <td>
+                    <span class="status-badge {% if user.role == 'admin' %}status-ready{% elif user.role == 'user' %}status-pending{% else %}status-muted{% endif %}">
+                        {{ user.role }}
+                    </span>
+                </td>
+                <td>
+                    {% if user.is_active %}
+                    <span class="status-dot ready"></span> Attivo
+                    {% else %}
+                    <span class="status-dot error"></span> Disattivato
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.last_login %}
+                    {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
+                    {% else %}
+                    Mai
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.id != current_user.id %}
+                    <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-secondary btn-sm" aria-label="{% if user.is_active %}Disattiva{% else %}Attiva{% endif %} utente {{ user.username }}">
+                            {% if user.is_active %}Disattiva{% else %}Attiva{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" style="display: inline;"
+                          onsubmit="return confirm('Eliminare questo utente?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger btn-sm" aria-label="Elimina utente {{ user.username }}">Elimina</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

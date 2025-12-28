@@ -3,8 +3,9 @@
 {% block title %}Aggiungi sito — Speculum{% endblock %}
 
 {% block content %}
-<header class="page-header">
-    <h1>Aggiungi sito</h1>
+<header class="page-header swiss-dots">
+    <span class="section-label">Nuovo</span>
+    <h1>Aggiungi<br>Sito</h1>
 </header>
 
 {% if error %}
@@ -12,6 +13,7 @@
 {% endif %}
 
 <form method="POST" class="form-panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="url">URL del sito o canale YouTube</label>
         <input type="url" id="url" name="url" required placeholder="https://esempio.it oppure https://youtube.com/@canale" class="form-input">
@@ -41,29 +43,38 @@
     
     <div class="form-row">
         <div class="form-group">
+            <label for="crawl_method">Metodo di crawl</label>
+            <select id="crawl_method" name="crawl_method" class="form-input">
+                <option value="wget" selected>wget (siti statici)</option>
+                <option value="singlefile">SingleFile (siti JavaScript/SPA)</option>
+            </select>
+            <span class="form-hint">SingleFile cattura pagine JavaScript-heavy renderizzate dal browser</span>
+        </div>
+
+        <div class="form-group">
             <label for="depth">Profondità crawl</label>
             <select id="depth" name="depth" class="form-input">
                 <option value="0">Illimitata (tutto il sito)</option>
-                <option value="1">1 livello</option>
+                <option value="1" selected>1 livello</option>
                 <option value="2">2 livelli</option>
                 <option value="3">3 livelli</option>
                 <option value="5">5 livelli</option>
                 <option value="10">10 livelli</option>
             </select>
-            <span class="form-hint">Quanti link in profondità seguire (solo siti web)</span>
+            <span class="form-hint">Quanti link in profondità seguire (solo wget)</span>
         </div>
-        
-        <div class="form-group">
-            <label for="crawl_interval">Aggiornamento</label>
-            <select id="crawl_interval" name="crawl_interval" class="form-input">
-                <option value="7">Settimanale</option>
-                <option value="14">Ogni 2 settimane</option>
-                <option value="30" selected>Mensile</option>
-                <option value="90">Trimestrale</option>
-                <option value="365">Annuale</option>
-            </select>
-            <span class="form-hint">Frequenza di aggiornamento</span>
-        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="crawl_interval">Aggiornamento</label>
+        <select id="crawl_interval" name="crawl_interval" class="form-input">
+            <option value="7">Settimanale</option>
+            <option value="14">Ogni 2 settimane</option>
+            <option value="30" selected>Mensile</option>
+            <option value="90">Trimestrale</option>
+            <option value="365">Annuale</option>
+        </select>
+        <span class="form-hint">Frequenza di aggiornamento</span>
     </div>
     
     <div class="form-group">

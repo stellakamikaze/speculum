@@ -123,9 +123,50 @@ def normalize_url(url: str) -> str:
         return url
 
 
+def is_internal_url(hostname: str) -> bool:
+    """
+    Check if a hostname points to an internal/private network address.
+    Used to prevent SSRF attacks.
+    """
+    if not hostname:
+        return True
+
+    hostname = hostname.lower()
+
+    # Localhost variants
+    if hostname in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
+        return True
+
+    # Private IP ranges
+    if hostname.startswith('192.168.') or hostname.startswith('10.'):
+        return True
+    if hostname.startswith('172.'):
+        # 172.16.0.0 - 172.31.255.255
+        try:
+            second_octet = int(hostname.split('.')[1])
+            if 16 <= second_octet <= 31:
+                return True
+        except (ValueError, IndexError):
+            pass
+
+    # Link-local addresses
+    if hostname.startswith('169.254.'):
+        return True
+
+    # Internal Docker/container hostnames
+    if hostname in ('host.docker.internal', 'gateway.docker.internal'):
+        return True
+
+    # Metadata endpoints (cloud providers)
+    if hostname in ('metadata.google.internal', '169.254.169.254'):
+        return True
+
+    return False
+
+
 def validate_url(url: str) -> tuple[bool, str]:
     """
-    Validate a URL for basic correctness.
+    Validate a URL for basic correctness and security.
 
     Args:
         url: The URL to validate
@@ -151,74 +192,25 @@ def validate_url(url: str) -> tuple[bool, str]:
         if not parsed.netloc:
             return False, "Dominio mancante"
 
+        # Extract hostname (without port)
+        hostname = parsed.hostname or ''
+
         # Domain must have at least one dot (TLD)
-        if '.' not in parsed.netloc:
+        if '.' not in hostname:
             return False, "Dominio non valido (manca TLD)"
+
+        # SECURITY: Block internal/private URLs (SSRF protection)
+        if is_internal_url(hostname):
+            return False, "URL interno non consentito"
 
         # Check for common malformed URLs
         if ' ' in url:
             return False, "URL contiene spazi"
 
-        if parsed.netloc.startswith('-') or parsed.netloc.endswith('-'):
+        if hostname.startswith('-') or hostname.endswith('-'):
             return False, "Dominio non valido"
 
         return True, ""
 
     except Exception as e:
         return False, f"Errore parsing URL: {str(e)}"
-
-
-def clean_url_list(urls_text: str) -> list[dict]:
-    """
-    Process a text block containing multiple URLs (one per line).
-
-    Args:
-        urls_text: Multi-line text with URLs
-
-    Returns:
-        List of dicts with 'url', 'valid', 'error' keys
-    """
-    results = []
-    seen_urls = set()
-
-    for line in urls_text.split('\n'):
-        line = line.strip()
-        if not line:
-            continue
-
-        extracted = extract_url(line)
-
-        if not extracted:
-            results.append({
-                'original': line[:100],
-                'url': None,
-                'valid': False,
-                'error': 'Nessun URL valido trovato'
-            })
-            continue
-
-        normalized = normalize_url(extracted)
-
-        # Check for duplicates
-        if normalized in seen_urls:
-            results.append({
-                'original': line[:100],
-                'url': normalized,
-                'valid': False,
-                'error': 'URL duplicato'
-            })
-            continue
-
-        is_valid, error = validate_url(normalized)
-
-        if is_valid:
-            seen_urls.add(normalized)
-
-        results.append({
-            'original': line[:100],
-            'url': normalized if is_valid else extracted,
-            'valid': is_valid,
-            'error': error if not is_valid else None
-        })
-
-    return results

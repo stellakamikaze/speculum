@@ -6,6 +6,7 @@ import re
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from threading import Thread, Lock
+from queue import Queue, Empty
 import logging
 import signal
 
@@ -83,24 +84,29 @@ def get_mirror_path(url, site_type='website', channel_id=None):
     return os.path.join(MIRRORS_BASE_PATH, parsed.netloc)
 
 
-def get_mirror_size(path):
-    total = 0
+def get_mirror_stats(path):
+    """Get mirror size and HTML count in a single os.walk() pass"""
+    total_size = 0
+    html_count = 0
     if os.path.exists(path):
         for dirpath, dirnames, filenames in os.walk(path):
             for f in filenames:
                 fp = os.path.join(dirpath, f)
                 if os.path.exists(fp):
-                    total += os.path.getsize(fp)
-    return total
+                    total_size += os.path.getsize(fp)
+                if f.endswith(('.html', '.htm')):
+                    html_count += 1
+    return total_size, html_count
+
+
+# Backward-compatible wrappers (will be removed after updating callers)
+def get_mirror_size(path):
+    size, _ = get_mirror_stats(path)
+    return size
 
 
 def count_html_files(path):
-    count = 0
-    if os.path.exists(path):
-        for dirpath, dirnames, filenames in os.walk(path):
-            for f in filenames:
-                if f.endswith(('.html', '.htm')):
-                    count += 1
+    _, count = get_mirror_stats(path)
     return count
 
 
@@ -126,23 +132,125 @@ def get_youtube_channel_info(url):
     return None
 
 
-def build_wget_command(url, output_path, depth=0, include_external=False):
+def normalize_url(url):
+    """Normalize URL for crawling - extract root domain from deep URLs.
+
+    Returns:
+        tuple: (root_url, original_url) - root URL of the domain and original URL
+    """
+    parsed = urlparse(url)
+    # Always include the scheme and netloc
+    root_url = f"{parsed.scheme}://{parsed.netloc}/"
+    return root_url, url
+
+
+def get_crawl_urls(url):
+    """Get list of URLs to crawl. Always includes root URL to capture homepage.
+
+    When given a deep URL like example.com/page/subpage, we crawl:
+    1. The root URL (example.com/) to get the homepage
+    2. The original URL to ensure that specific page is captured
+
+    Returns:
+        list: URLs to crawl (root first, then original if different)
+    """
+    root_url, original_url = normalize_url(url)
+
+    # If the original URL is already the root, just return it
+    if original_url.rstrip('/') == root_url.rstrip('/'):
+        return [root_url]
+
+    # Return both: root first (to get homepage), then original
+    return [root_url, original_url]
+
+
+def build_wget_command(url, output_path, depth=1, include_external=False, archive_media=True):
+    """Build wget command with best practices for complete site archiving.
+
+    Best practices implemented:
+    - Proper rate limiting to avoid server overload
+    - Comprehensive error handling and retries
+    - Proper content-type handling
+    - Server-friendly headers
+    - Full media archiving (videos, images, etc.) for complete preservation
+    """
     cmd = [
         'wget', '--mirror', '--convert-links', '--adjust-extension',
-        '--page-requisites', '--no-parent', '--wait=0.5', '--random-wait',
-        '--tries=3', '--timeout=30', '--no-check-certificate',
-        '--execute=robots=off',
-        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        '--page-requisites', '--no-parent',
+        # Rate limiting - be respectful to servers
+        '--wait=1', '--random-wait',
+        # Reliability settings
+        '--tries=5', '--timeout=60', '--read-timeout=60',
+        '--retry-connrefused', '--retry-on-http-error=503,429',
+        # SSL handling
+        '--no-check-certificate',
+        # Crawl control
+        '--execute=robots=off',  # Many archived sites have expired robots.txt
+        '--max-redirect=10',
+        # Content handling
+        '--content-disposition',  # Use server-provided filenames
+        '--trust-server-names',  # Trust server for URL to filename mapping
+        # HTTP headers - mimic a real browser
+        '--header=Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        '--header=Accept-Language: en-US,en;q=0.9,it;q=0.8',
+        '--header=Accept-Encoding: identity',  # Avoid compressed responses for better archiving
+        '--header=Connection: keep-alive',
+        '--header=DNT: 1',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        # Output settings
         '-P', output_path,
+        '--no-verbose', '--show-progress',  # Cleaner output
     ]
-    if depth > 0:
+    # depth=0 means infinite, depth>0 limits crawl depth
+    if depth == 0:
+        pass  # No -l flag = infinite depth
+    else:
         cmd.extend(['-l', str(depth)])
     if include_external:
         cmd.append('--span-hosts')
         cmd.append('--domains=' + urlparse(url).netloc)
-    cmd.extend(['--reject', '*.exe,*.zip,*.tar.gz,*.rar,*.7z,*.iso,*.dmg'])
+
+    # Media archiving: only reject potentially dangerous executables
+    # Keep videos, PDFs, and other content that might be part of the site
+    if archive_media:
+        # Only reject dangerous/executable files
+        cmd.extend(['--reject', '*.exe,*.msi,*.dmg,*.pkg,*.deb,*.rpm'])
+    else:
+        # Reject large files for quick archiving
+        cmd.extend(['--reject', '*.exe,*.zip,*.tar.gz,*.rar,*.7z,*.iso,*.dmg,*.mp4,*.webm,*.avi,*.mov,*.mkv,*.flv'])
+
     cmd.append(url)
     return cmd
+
+
+def _output_reader(pipe, queue):
+    """Thread function to read process output without blocking"""
+    try:
+        for line in iter(pipe.readline, ''):
+            queue.put(line)
+    except (IOError, ValueError) as e:
+        logger.debug(f"Output reader stopped: {e}")
+    finally:
+        try:
+            pipe.close()
+        except (IOError, ValueError):
+            pass
+
+
+def mark_crawl_success(site, crawl_log, size_bytes, page_count):
+    """Mark site and log as successfully crawled"""
+    site.status = 'ready'
+    site.last_crawl = datetime.utcnow()
+    site.next_crawl = datetime.utcnow() + timedelta(days=site.crawl_interval_days)
+    site.size_bytes = size_bytes
+    site.page_count = page_count
+    site.error_message = None
+    site.retry_count = 0
+
+    crawl_log.finished_at = datetime.utcnow()
+    crawl_log.status = 'success'
+    crawl_log.pages_crawled = page_count
+    crawl_log.size_bytes = size_bytes
 
 
 def handle_crawl_error(site, crawl_log, error_message, db):
@@ -162,6 +270,86 @@ def handle_crawl_error(site, crawl_log, error_message, db):
         error_type = classify_error(error_message)
         site.status = 'dead' if error_type == 'permanent' else 'error'
         logger.info(f"No retry for {site.url}: {error_type}")
+
+
+def _run_wget_process(cmd, site_id, crawl_log_id, timeout, no_output_timeout=300):
+    """Run a wget process with real-time output capture and timeout handling.
+
+    Returns:
+        tuple: (returncode, log_lines)
+    """
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    # Set up non-blocking output reading via queue
+    output_queue = Queue()
+    reader_thread = Thread(target=_output_reader, args=(process.stdout, output_queue), daemon=True)
+    reader_thread.start()
+
+    # Register active crawl
+    with crawls_lock:
+        active_crawls[site_id] = {
+            'process': process,
+            'started': datetime.utcnow(),
+            'log_lines': [],
+            'crawl_log_id': crawl_log_id
+        }
+
+    # Read output non-blocking with timeout
+    log_buffer = []
+    start_time = datetime.utcnow()
+    last_output_time = datetime.utcnow()
+
+    while True:
+        # Check if process finished
+        if process.poll() is not None:
+            # Drain remaining output
+            while True:
+                try:
+                    line = output_queue.get_nowait()
+                    if line:
+                        log_buffer.append(line.strip())
+                except Empty:
+                    break
+            break
+
+        # Check total timeout
+        elapsed = (datetime.utcnow() - start_time).total_seconds()
+        if elapsed > timeout:
+            process.kill()
+            raise subprocess.TimeoutExpired(cmd, timeout)
+
+        # Check stall timeout (no output for too long)
+        stall_time = (datetime.utcnow() - last_output_time).total_seconds()
+        if stall_time > no_output_timeout:
+            logger.warning(f"Crawl stalled, no output for {no_output_timeout}s")
+            process.kill()
+            raise Exception(f"Crawl stalled - no output for {no_output_timeout}s")
+
+        # Read available output (non-blocking)
+        try:
+            line = output_queue.get(timeout=1.0)
+            if line:
+                last_output_time = datetime.utcnow()
+                log_buffer.append(line.strip())
+                # Keep last 500 lines in memory for real-time viewing
+                with crawls_lock:
+                    if site_id in active_crawls:
+                        active_crawls[site_id]['log_lines'].append(line.strip())
+                        if len(active_crawls[site_id]['log_lines']) > 500:
+                            active_crawls[site_id]['log_lines'] = active_crawls[site_id]['log_lines'][-500:]
+        except Empty:
+            pass  # No output available, continue loop
+
+    # Wait for reader thread to finish
+    reader_thread.join(timeout=5)
+
+    return process.returncode, log_buffer
 
 
 def crawl_website(site_id):
@@ -185,83 +373,48 @@ def crawl_website(site_id):
 
         mirror_path = get_mirror_path(site.url)
         timeout = get_timeout_for_site(site)
-        process = None
+
+        # Get URLs to crawl (root + original if different)
+        urls_to_crawl = get_crawl_urls(site.url)
+        logger.info(f"Will crawl URLs: {urls_to_crawl}")
 
         try:
-            cmd = build_wget_command(site.url, MIRRORS_BASE_PATH, site.depth, site.include_external)
-            logger.info(f"Starting crawl for {site.url}")
+            all_log_buffer = []
 
-            # Start process with real-time output capture
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
+            # Crawl each URL (root first to capture homepage, then original)
+            for crawl_url in urls_to_crawl:
+                cmd = build_wget_command(crawl_url, MIRRORS_BASE_PATH, site.depth, site.include_external, archive_media=True)
+                logger.info(f"Starting crawl for {crawl_url}")
 
-            # Register active crawl
-            with crawls_lock:
-                active_crawls[site_id] = {
-                    'process': process,
-                    'started': datetime.utcnow(),
-                    'log_lines': [],
-                    'crawl_log_id': crawl_log_id
-                }
+                returncode, log_buffer = _run_wget_process(cmd, site_id, crawl_log_id, timeout)
+                all_log_buffer.extend(log_buffer)
+                all_log_buffer.append(f"--- Finished crawling {crawl_url} (exit code: {returncode}) ---")
 
-            # Read output in real-time
-            log_buffer = []
-            try:
-                while True:
-                    line = process.stdout.readline()
-                    if not line and process.poll() is not None:
-                        break
-                    if line:
-                        log_buffer.append(line.strip())
-                        # Keep last 500 lines in memory for real-time viewing
-                        with crawls_lock:
-                            if site_id in active_crawls:
-                                active_crawls[site_id]['log_lines'].append(line.strip())
-                                if len(active_crawls[site_id]['log_lines']) > 500:
-                                    active_crawls[site_id]['log_lines'] = active_crawls[site_id]['log_lines'][-500:]
-            except Exception as e:
-                logger.warning(f"Error reading wget output: {e}")
-
-            # Wait for process with timeout
-            try:
-                process.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                raise
-
-            returncode = process.returncode
+                # wget returns 0 on success, 8 on some errors that are recoverable
+                if returncode not in [0, 8]:
+                    logger.warning(f"wget returned {returncode} for {crawl_url}, continuing with next URL")
 
             # Save log to database
             crawl_log = CrawlLog.query.get(crawl_log_id)
-            crawl_log.wget_log = '\n'.join(log_buffer[-1000:])  # Keep last 1000 lines
+            crawl_log.wget_log = '\n'.join(all_log_buffer[-1000:])  # Keep last 1000 lines
 
-            if returncode in [0, 8]:
-                size_bytes = get_mirror_size(mirror_path)
-                page_count = count_html_files(mirror_path)
+            # Check results
+            size_bytes, page_count = get_mirror_stats(mirror_path)
 
-                if page_count == 0 and size_bytes < 1000:
-                    raise Exception("No content downloaded")
+            if page_count == 0 and size_bytes < 1000:
+                raise Exception("No content downloaded")
 
-                site.status = 'ready'
-                site.last_crawl = datetime.utcnow()
-                site.next_crawl = datetime.utcnow() + timedelta(days=site.crawl_interval_days)
-                site.size_bytes = size_bytes
-                site.page_count = page_count
-                site.error_message = None
-                site.retry_count = 0
+            mark_crawl_success(site, crawl_log, size_bytes, page_count)
+            logger.info(f"Crawl done: {site.url} - {page_count} pages, {size_bytes} bytes")
 
-                crawl_log.finished_at = datetime.utcnow()
-                crawl_log.status = 'success'
-                crawl_log.pages_crawled = page_count
-                crawl_log.size_bytes = size_bytes
-                logger.info(f"Crawl done: {site.url} - {page_count} pages")
-            else:
-                raise Exception(f"wget failed with code {returncode}")
+            # Generate AI metadata post-crawl
+            try:
+                from app.ai_metadata import update_site_with_ai_metadata
+                db.session.commit()  # Commit crawl success first
+                update_site_with_ai_metadata(site_id)
+                logger.info(f"AI metadata generated for {site.url}")
+            except Exception as e:
+                logger.warning(f"AI metadata generation failed for {site.url}: {e}")
 
         except subprocess.TimeoutExpired:
             handle_crawl_error(site, crawl_log, f'Timeout after {timeout//3600}h', db)
@@ -331,20 +484,14 @@ def crawl_youtube(site_id):
                                         video = Video(site_id=site.id, video_id=vid, title=info.get('title','')[:500], status='ready')
                                         db.session.add(video)
                                         video_count += 1
-                                except:
-                                    pass
+                                except (json.JSONDecodeError, IOError, KeyError) as e:
+                                    logger.warning(f"Failed to parse video info {f}: {e}")
             
             db.session.commit()
-            site.status = 'ready'
-            site.last_crawl = datetime.utcnow()
-            site.next_crawl = datetime.utcnow() + timedelta(days=site.crawl_interval_days)
-            site.size_bytes = get_mirror_size(mirror_path)
-            site.page_count = Video.query.filter_by(site_id=site.id).count()
-            site.retry_count = 0
-            crawl_log.finished_at = datetime.utcnow()
-            crawl_log.status = 'success'
-            crawl_log.pages_crawled = video_count
-            
+            size_bytes = get_mirror_size(mirror_path)
+            page_count = Video.query.filter_by(site_id=site.id).count()
+            mark_crawl_success(site, crawl_log, size_bytes, page_count)
+
         except subprocess.TimeoutExpired:
             handle_crawl_error(site, crawl_log, f'Timeout after {timeout//3600}h', db)
         except Exception as e:
@@ -366,6 +513,8 @@ def crawl_site(site_id):
             from app.models import db
             db.session.commit()
             crawl_youtube(site_id)
+        elif site.crawl_method == 'singlefile':
+            crawl_singlefile(site_id)
         else:
             crawl_website(site_id)
 
@@ -512,3 +661,91 @@ def delete_mirror(url, site_type='website', channel_id=None):
     if os.path.exists(mirror_path):
         shutil.rmtree(mirror_path)
         logger.info(f"Deleted mirror at {mirror_path}")
+
+
+def crawl_singlefile(site_id):
+    """Crawl a JavaScript-heavy site using SingleFile CLI.
+    SingleFile captures the fully-rendered page as a single HTML file with embedded resources.
+    """
+    from app.models import db, Site, CrawlLog
+    from app import create_app
+    app = create_app()
+
+    with app.app_context():
+        site = Site.query.get(site_id)
+        if not site:
+            return
+
+        site.status = 'crawling'
+        site.error_message = None
+        db.session.commit()
+
+        crawl_log = CrawlLog(site_id=site.id, started_at=datetime.utcnow(), status='running')
+        db.session.add(crawl_log)
+        db.session.commit()
+        crawl_log_id = crawl_log.id
+
+        mirror_path = get_mirror_path(site.url)
+        os.makedirs(mirror_path, exist_ok=True)
+        output_path = os.path.join(mirror_path, 'index.html')
+
+        try:
+            # Check if single-file CLI is available
+            check_result = subprocess.run(['single-file', '--version'], capture_output=True, text=True)
+            if check_result.returncode != 0:
+                raise Exception("SingleFile CLI not installed. Install with: npm install -g single-file-cli")
+
+            # Build SingleFile command
+            cmd = [
+                'single-file',
+                '--browser-executable-path', '/usr/bin/chromium',
+                '--browser-headless',
+                '--browser-args', '["--no-sandbox", "--disable-dev-shm-usage"]',
+                '--filename-conflict-action', 'overwrite',
+                '--output-directory', mirror_path,
+                site.url
+            ]
+
+            logger.info(f"Starting SingleFile crawl for {site.url}")
+
+            # Run SingleFile with timeout
+            timeout = 300  # 5 minutes per page
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+
+            # Check output
+            log_output = result.stdout + '\n' + result.stderr
+            crawl_log = CrawlLog.query.get(crawl_log_id)
+            crawl_log.wget_log = log_output[-5000:]  # Keep last 5000 chars
+
+            if result.returncode == 0:
+                # Rename output file to index.html if needed
+                html_files = [f for f in os.listdir(mirror_path) if f.endswith('.html')]
+                if html_files and html_files[0] != 'index.html':
+                    old_path = os.path.join(mirror_path, html_files[0])
+                    new_path = os.path.join(mirror_path, 'index.html')
+                    os.rename(old_path, new_path)
+
+                size_bytes, page_count = get_mirror_stats(mirror_path)
+
+                if page_count == 0:
+                    raise Exception("No content captured by SingleFile")
+
+                mark_crawl_success(site, crawl_log, size_bytes, page_count)
+                logger.info(f"SingleFile crawl done: {site.url} - {page_count} pages, {size_bytes} bytes")
+            else:
+                raise Exception(f"SingleFile failed: {result.stderr[:500]}")
+
+        except subprocess.TimeoutExpired:
+            handle_crawl_error(site, CrawlLog.query.get(crawl_log_id), 'SingleFile timeout', db)
+        except FileNotFoundError:
+            handle_crawl_error(site, CrawlLog.query.get(crawl_log_id), 'SingleFile CLI not found - install with: npm install -g single-file-cli', db)
+        except Exception as e:
+            crawl_log = CrawlLog.query.get(crawl_log_id)
+            handle_crawl_error(site, crawl_log, str(e)[:1000], db)
+        finally:
+            db.session.commit()

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   speculum:
     build: .
@@ -7,27 +5,52 @@ services:
     restart: unless-stopped
     ports:
       - "5050:5000"
-    volumes:
-      - ./data:/app/instance
-      - /path/to/your/mirrors:/mirrors  # Change this
     environment:
-      - SECRET_KEY=generate-a-secure-key-here  # Change this
+      # SECURITY: Generate a strong secret key for production
+      # Use: python -c "import secrets; print(secrets.token_hex(32))"
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      # SECURITY: Admin credentials (REQUIRED for production)
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      # Database
       - DATABASE_URL=sqlite:////app/instance/speculum.db
       - MIRRORS_PATH=/mirrors
+      # Ollama AI (optional)
       - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-tinyllama}
+      # Environment: set to 'production' for public deployment
+      - FLASK_ENV=${FLASK_ENV:-development}
+      # Telegram notifications (optional)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # Rate limiting (requests per minute)
+      - RATE_LIMIT=${RATE_LIMIT:-60}
+    volumes:
+      - ./data:/app/instance
+      - ${MIRRORS_PATH:-./mirrors}:/mirrors
     depends_on:
       - ollama
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/"]
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - speculum-net
 
+  # Ollama for AI metadata (optional - can be disabled)
   ollama:
     image: ollama/ollama:latest
     container_name: speculum-ollama
     restart: unless-stopped
     volumes:
-      - ./ollama_data:/root/.ollama
-    expose:
-      - "11434"
+      - ollama_data:/root/.ollama
+    networks:
+      - speculum-net
+
+volumes:
+  ollama_data:
+
+networks:
+  speculum-net:
+    driver: bridge

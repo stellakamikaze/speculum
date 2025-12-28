@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Media — {{ site.name }} — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <span class="section-label">Archivio Media</span>
+    <div class="header-row">
+        <div>
+            <h1>{{ site.name }}</h1>
+            <p class="header-subtitle">{{ media_files|length }} file multimediali trovati</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al sito</a>
+            <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary" target="_blank">Visita Mirror</a>
+        </div>
+    </div>
+</header>
+
+{% if media_files %}
+<div class="media-gallery">
+    {% for media in media_files %}
+    <div class="media-item" onclick="openLightbox('{{ url_for('serve_media', file_path=media.path) }}', '{{ media.name }}')">
+        <img src="{{ url_for('serve_media', file_path=media.path) }}" alt="{{ media.name }}" loading="lazy">
+        <div class="media-item-overlay">
+            <div>{{ media.name[:30] }}{% if media.name|length > 30 %}...{% endif %}</div>
+            <div>{{ media.size_human }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="media-lightbox" style="display:none" onclick="closeLightbox()">
+    <button class="media-lightbox-close" onclick="closeLightbox()">&times;</button>
+    <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+function openLightbox(src, alt) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox-img').alt = alt;
+    document.getElementById('lightbox').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+
+{% else %}
+<div class="empty-state swiss-dots">
+    <p>Nessun file multimediale trovato in questo mirror.</p>
+    <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al sito</a>
+</div>
+{% endif %}
+
+{% endblock %}

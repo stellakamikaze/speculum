@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Richiedi Mirror — Speculum{% endblock %}
+
+{% block content %}
+<header class="section-header">
+    <span class="section-number">01.</span>
+    <div class="section-title">
+        <h1>Richiedi <span class="accent">Mirror</span></h1>
+        <p class="section-subtitle">Suggerisci un sito da archiviare</p>
+    </div>
+</header>
+
+<div class="form-container" style="max-width: 600px;">
+    {% if success %}
+    <div class="status-badge status-ready" style="margin-bottom: var(--space-lg); padding: var(--space-md);">
+        {{ success }}
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="status-badge status-error" style="margin-bottom: var(--space-lg); padding: var(--space-md);">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" class="site-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label class="form-label" for="url">URL del sito *</label>
+            <input type="url" name="url" id="url" class="form-input" required
+                   placeholder="https://example.com">
+            <span class="form-hint">L'indirizzo completo del sito da archiviare</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="name">Nome (opzionale)</label>
+            <input type="text" name="name" id="name" class="form-input"
+                   placeholder="Nome descrittivo del sito">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="description">Descrizione (opzionale)</label>
+            <textarea name="description" id="description" class="form-input" rows="3"
+                      placeholder="Perche' questo sito dovrebbe essere archiviato?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="category">Categoria suggerita</label>
+            <select name="category" id="category" class="form-input">
+                <option value="">-- Nessuna --</option>
+                {% for cat in categories %}
+                <option value="{{ cat.name }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if not current_user %}
+        <div class="form-section" style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-light);">
+            <h3 style="margin-bottom: var(--space-md);">Informazioni richiedente (opzionale)</h3>
+
+            <div class="form-group">
+                <label class="form-label" for="requester_name">Il tuo nome</label>
+                <input type="text" name="requester_name" id="requester_name" class="form-input"
+                       placeholder="Mario Rossi">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="requester_email">Email di contatto</label>
+                <input type="email" name="requester_email" id="requester_email" class="form-input"
+                       placeholder="email@example.com">
+                <span class="form-hint">Per ricevere notifiche sullo stato della richiesta</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Invia Richiesta</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Annulla</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
