@@ -13,6 +13,7 @@
 {% endif %}
 
 <form method="POST" class="form-panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="url">URL del sito o canale YouTube</label>
         <input type="url" id="url" name="url" required placeholder="https://esempio.it oppure https://youtube.com/@canale" class="form-input">

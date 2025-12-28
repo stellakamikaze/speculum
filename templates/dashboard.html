@@ -12,9 +12,11 @@
         <div class="header-actions">
             <button onclick="refreshDashboard()" class="btn btn-secondary">Aggiorna</button>
             <form method="POST" action="{{ url_for('clear_all_files') }}" style="display:inline" onsubmit="return confirm('ATTENZIONE: Elimina TUTTI i file mirrorati ma mantiene i siti nel database. Continuare?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Elimina tutti i file</button>
             </form>
             <form method="POST" action="{{ url_for('restart_all_crawls') }}" style="display:inline" onsubmit="return confirm('Riavviare tutti i crawl in pending?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary">Avvia tutti i crawl</button>
             </form>
         </div>
@@ -73,6 +75,7 @@
             <div class="crawl-actions">
                 <button onclick="showLiveLog({{ site.id }})" class="btn btn-small btn-secondary">Log</button>
                 <form method="POST" action="{{ url_for('stop_site_crawl', site_id=site.id) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Interrompere il crawl?')">Stop</button>
                 </form>
             </div>
@@ -121,6 +124,7 @@
                     <td>{{ site.created_at.strftime('%d/%m %H:%M') }}</td>
                     <td class="actions-cell">
                         <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-small btn-primary">Avvia</button>
                         </form>
                     </td>
@@ -158,6 +162,7 @@
                     <td class="error-text">{{ site.error_message[:50] if site.error_message else '-' }}{% if site.error_message and site.error_message|length > 50 %}...{% endif %}</td>
                     <td class="actions-cell">
                         <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-small btn-primary">Forza retry</button>
                         </form>
                     </td>
@@ -193,6 +198,7 @@
                     <td class="error-text">{{ site.error_message[:80] if site.error_message else '-' }}{% if site.error_message and site.error_message|length > 80 %}...{% endif %}</td>
                     <td class="actions-cell">
                         <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-small btn-primary">Retry</button>
                         </form>
                         <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-small btn-secondary">Log</a>
@@ -227,9 +233,11 @@
                     <td class="error-text">{{ site.error_message[:80] if site.error_message else 'Errore permanente' }}{% if site.error_message and site.error_message|length > 80 %}...{% endif %}</td>
                     <td class="actions-cell">
                         <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-small btn-secondary">Riprova</button>
                         </form>
                         <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Eliminare definitivamente?')">Elimina</button>
                         </form>
                     </td>

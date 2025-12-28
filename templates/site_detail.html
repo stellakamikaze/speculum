@@ -89,18 +89,22 @@
             
             {% if site.status == 'crawling' %}
             <form method="POST" action="{{ url_for('stop_site_crawl', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger" onclick="return confirm('Interrompere il crawl?')">Stop</button>
             </form>
             <button onclick="showSiteLog()" class="btn btn-secondary">Log live</button>
             {% elif site.status in ('error', 'dead', 'retry_pending') %}
             <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary">Riprova</button>
             </form>
             <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary">Forza crawl</button>
             </form>
             {% else %}
             <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary">
                     {% if site.status == 'ready' %}Aggiorna ora{% else %}Avvia crawl{% endif %}
                 </button>
@@ -109,16 +113,13 @@
 
             {% if site.status == 'ready' and site.site_type == 'website' %}
             <form method="POST" action="{{ url_for('generate_site_metadata', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary" title="Genera nome, descrizione e categoria con AI">
                     {% if site.ai_generated %}Rigenera AI{% else %}Genera AI{% endif %}
                 </button>
             </form>
-            <form method="POST" action="{{ url_for('generate_screenshot', site_id=site.id) }}" style="display:inline">
-                <button type="submit" class="btn btn-secondary" title="Genera screenshot locale con Playwright">
-                    {% if site.screenshot_path %}Rigenera screenshot{% else %}Screenshot locale{% endif %}
-                </button>
-            </form>
             <form method="POST" action="{{ url_for('fetch_wayback_screenshot', site_id=site.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary" title="Recupera screenshot da Wayback Machine">
                     Screenshot Wayback
                 </button>
@@ -216,6 +217,7 @@
     <section class="detail-panel">
         <h2>Modifica</h2>
         <form method="POST" action="{{ url_for('update_site', site_id=site.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="name">Nome</label>
                 <input type="text" id="name" name="name" value="{{ site.name }}" class="form-input">
@@ -296,6 +298,7 @@
         <div class="danger-action">
             <p>Elimina i file scaricati ma mantieni la voce nel database. Potrai rifare il crawl in seguito.</p>
             <form method="POST" action="{{ url_for('clear_site_files', site_id=site.id) }}" onsubmit="return confirm('Eliminare tutti i file scaricati?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-warning">Elimina file</button>
             </form>
         </div>
@@ -304,6 +307,7 @@
         <div class="danger-action">
             <p>Elimina questo sito e tutti i file scaricati. Questa azione è irreversibile.</p>
             <form method="POST" action="{{ url_for('delete_site', site_id=site.id) }}" onsubmit="return confirm('Sei sicuro di voler eliminare questo sito e tutto il suo mirror?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Elimina sito</button>
             </form>
         </div>

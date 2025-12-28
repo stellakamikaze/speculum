@@ -23,6 +23,7 @@
                     <span class="category-count">{{ cat.sites|length }} siti</span>
                 </div>
                 <form method="POST" action="{{ url_for('delete_category', category_id=cat.id) }}" class="category-actions" onsubmit="return confirm('Eliminare la categoria {{ cat.name }}? I siti non verranno eliminati.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-small btn-danger">Elimina</button>
                 </form>
             </li>
@@ -36,6 +37,7 @@
     <section class="panel">
         <h2>Nuova categoria</h2>
         <form method="POST" action="{{ url_for('add_category') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="name">Nome categoria</label>
                 <input type="text" id="name" name="name" required class="form-input" placeholder="es. Blog personali">

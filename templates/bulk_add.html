@@ -10,6 +10,7 @@
 </header>
 
 <form method="POST" class="form-panel form-wide">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
         <label for="urls">Lista URL (uno per riga)</label>
         <textarea id="urls" name="urls" rows="15" required class="form-input mono" placeholder="https://esempio1.it

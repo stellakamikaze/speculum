@@ -63,6 +63,7 @@
     <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-secondary">Torna al sito</a>
     {% if site.status in ('error', 'dead') %}
     <form method="POST" action="{{ url_for('retry_site_crawl', site_id=site.id) }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-primary">Riprova crawl</button>
     </form>
     {% endif %}

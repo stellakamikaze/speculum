@@ -283,37 +283,7 @@ def update_site_with_ai_metadata(site_id: int) -> bool:
                 db.session.flush()
             site.category_id = category.id
 
-        site.ai_generated = True
         db.session.commit()
 
         logger.info(f"Updated site {site.id} with AI metadata: {metadata}")
         return True
-
-
-def process_pending_ai_metadata():
-    """
-    Process all sites that are ready but don't have AI metadata.
-    Intended for batch processing.
-    """
-    from app.models import Site
-    from app import create_app
-
-    app = create_app()
-
-    with app.app_context():
-        # Find sites that are ready but don't have AI-generated metadata
-        sites = Site.query.filter(
-            Site.status == 'ready',
-            Site.ai_generated == False,
-            Site.site_type == 'website'
-        ).all()
-
-        logger.info(f"Processing AI metadata for {len(sites)} sites")
-
-        for site in sites:
-            try:
-                success = update_site_with_ai_metadata(site.id)
-                if success:
-                    logger.info(f"AI metadata generated for {site.url}")
-            except Exception as e:
-                logger.error(f"Error processing AI metadata for {site.url}: {e}")

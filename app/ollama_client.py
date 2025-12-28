@@ -14,7 +14,7 @@ def check_ollama_available():
     try:
         response = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
         return response.status_code == 200
-    except:
+    except requests.RequestException:
         return False
 
 

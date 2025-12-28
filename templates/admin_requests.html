@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Richieste Mirror — Speculum{% endblock %}
+
+{% block content %}
+<header class="section-header">
+    <span class="section-number">01.</span>
+    <div class="section-title">
+        <h1>Richieste <span class="accent">Mirror</span></h1>
+    </div>
+    <div class="header-actions">
+        <div class="filter-tabs">
+            <a href="{{ url_for('admin_mirror_requests', status='pending') }}"
+               class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">
+                In attesa
+            </a>
+            <a href="{{ url_for('admin_mirror_requests', status='approved') }}"
+               class="filter-tab {% if status_filter == 'approved' %}active{% endif %}">
+                Approvate
+            </a>
+            <a href="{{ url_for('admin_mirror_requests', status='rejected') }}"
+               class="filter-tab {% if status_filter == 'rejected' %}active{% endif %}">
+                Rifiutate
+            </a>
+            <a href="{{ url_for('admin_mirror_requests', status='all') }}"
+               class="filter-tab {% if status_filter == 'all' %}active{% endif %}">
+                Tutte
+            </a>
+        </div>
+    </div>
+</header>
+
+{% if requests %}
+<div class="sites-grid">
+    {% for req in requests %}
+    <article class="site-card {% if req.status == 'pending' %}pending{% elif req.status == 'approved' %}ready{% else %}error{% endif %}">
+        <div class="site-header">
+            <h3 class="site-name">
+                <a href="{{ req.url }}" target="_blank" rel="noopener">
+                    {{ req.name or req.url|truncate(40) }}
+                </a>
+            </h3>
+            <span class="site-type-badge">
+                {% if req.status == 'pending' %}
+                In attesa
+                {% elif req.status == 'approved' %}
+                Approvata
+                {% else %}
+                Rifiutata
+                {% endif %}
+            </span>
+        </div>
+
+        <p class="site-url" style="font-size: 0.8rem; word-break: break-all;">
+            {{ req.url }}
+        </p>
+
+        {% if req.description %}
+        <p class="site-description">{{ req.description[:150] }}{% if req.description|length > 150 %}...{% endif %}</p>
+        {% endif %}
+
+        <div class="site-meta">
+            <span>
+                Richiesto da: {{ req.requester_name or (req.requester.username if req.requester else 'Anonimo') }}
+            </span>
+            <span>{{ req.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
+
+        {% if req.category_suggestion %}
+        <div style="margin-top: var(--space-sm);">
+            <span class="status-badge">Categoria: {{ req.category_suggestion }}</span>
+        </div>
+        {% endif %}
+
+        {% if req.status == 'pending' %}
+        <div class="site-actions" style="margin-top: var(--space-md);">
+            <form method="POST" action="{{ url_for('admin_approve_request', request_id=req.id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">Approva</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin_reject_request', request_id=req.id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="notes" value="">
+                <button type="submit" class="btn btn-danger btn-sm"
+                        onclick="this.form.notes.value = prompt('Motivo del rifiuto (opzionale):') || '';">
+                    Rifiuta
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if req.status != 'pending' and req.reviewed_at %}
+        <div style="margin-top: var(--space-sm); font-size: 0.75rem; color: var(--text-muted);">
+            Revisionata il {{ req.reviewed_at.strftime('%d/%m/%Y %H:%M') }}
+            {% if req.admin_notes %}
+            <br>Note: {{ req.admin_notes }}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if req.site %}
+        <div style="margin-top: var(--space-sm);">
+            <a href="{{ url_for('site_detail', site_id=req.site.id) }}" class="btn btn-secondary btn-sm">
+                Vedi Sito
+            </a>
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>Nessuna richiesta {% if status_filter != 'all' %}{{ status_filter }}{% endif %}.</p>
+</div>
+{% endif %}
+{% endblock %}

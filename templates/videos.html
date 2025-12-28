@@ -47,6 +47,7 @@
 <div class="empty-state swiss-dots">
     <p>Nessun video scaricato per questo canale.</p>
     <form method="POST" action="{{ url_for('trigger_crawl', site_id=site.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-primary">Avvia download video</button>
     </form>
 </div>
