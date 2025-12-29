@@ -4,6 +4,60 @@ Documento di pianificazione per lo sviluppo futuro di Speculum, basato su ricerc
 
 ---
 
+## Visione: Progetto Celeste
+
+### Il Problema
+
+L'infosfera in lingua italiana trabocca di reperti culturali inestimabili: zine, video d'epoca, controcultura, archivi personali e molto altro. **Dove sono? Chi li salva? E soprattutto, cosa c'e dentro?**
+
+Esempi concreti di patrimonio a rischio:
+- Le migliori esibizioni live di **Lou X** (storico rapper abruzzese) su Telenorba e Videomusic, ora solo su YouTube
+- I numeri di **Decoder**, storica rivista cyberpunk italiana, conservati su Archive.org dall'[Archivio Grafton 9](https://grafton9.net/)
+- I materiali politici dell'**Archivio Primo Moroni**, collezionati dal collettivo [Autistici](https://www.inventati.org/apm/index.php)
+
+Ogni giorno questi materiali rischiano di scomparire per sempre: politiche di moderazione arbitrarie, chiusura di account, bit rot su hard disk vecchi.
+
+### La Visione
+
+**Celeste** e un protocollo open-source per la digitalizzazione e la divulgazione di patrimoni culturali sommersi.
+
+**Obiettivo**: creare una piattaforma a meta tra [The Public Domain Review](https://publicdomainreview.org/) e [Monoskop](https://monoskop.org/Monoskop), per scovare, raccogliere, conservare e raccontare il meglio della controcultura italiana.
+
+### Caso d'Uso: Libreria Potlatch (Milano)
+
+La libreria [Potlatch](https://www.instagram.com/potlatch.milano/) dispone di un ampio magazzino di libri non catalogati che contiene edizioni rare, pubblicazioni indipendenti in copia unica e opere di altissimo valore culturale.
+
+**Obiettivi del progetto pilota**:
+1. Catalogare il magazzino e digitalizzare il catalogo
+2. Sviluppare un indice tematico e percorsi narrativi ("I 10 libri di Potlatch che parlano di...")
+3. Selezionare libri rari e digitalizzarli (scan), liberandoli in pubblico dominio
+4. Prototipare un protocollo replicabile per altre librerie indipendenti
+
+### Come Speculum si Integra
+
+Speculum puo evolvere per diventare l'infrastruttura tecnica di Celeste:
+
+| Funzionalita Celeste | Implementazione Speculum |
+|---------------------|--------------------------|
+| Archiviazione video YouTube | Gia presente, da potenziare |
+| Catalogazione con metadati culturali | Estendere modello dati |
+| Percorsi tematici narrativi | Sistema Collections + export Ghost |
+| Distribuzione P2P | Generazione torrent automatica |
+| Ridondanza archivio | Upload automatico su Archive.org |
+| Digitalizzazione documenti | Supporto PDF/scan con OCR |
+| Rete di librerie | Federazione tra istanze |
+
+### Risorse Celeste
+
+- [Documento progetto Potlatch](https://docs.google.com/document/d/1JKwmUpXGxKLdjA8FhSaI9AKs1CxtsVEN_U8iHfId-qA/edit)
+- [Call pubblica canali YouTube](https://www.instagram.com/p/DIvjHNHsMvJ/)
+- [Bando Cariplo "Valore della Cultura"](https://www.fondazionecariplo.it/static/upload/tes/testo_bando-valore-della-cultura-2025.pdf)
+- [Ghost CMS](https://ghost.org/) - per percorsi tematici
+- [Koha](https://koha-community.org/) - sistema gestione biblioteche
+- [BookStack](https://www.bookstackapp.com/) - alternativa piu semplice a Ghost
+
+---
+
 ## Domande per Definire le Priorita
 
 ### Scala e Storage
@@ -25,6 +79,16 @@ Documento di pianificazione per lo sviluppo futuro di Speculum, basato su ricerc
 10. **Usi gia Telegram?** Ti interesserebbero anche notifiche email o webhook?
 11. **Hai altri servizi su Unraid** con cui vorresti integrare Speculum?
 12. **Ti interessa un'API REST** per automazioni esterne?
+
+### Celeste-Specifiche
+13. **Priorita immediata**: Partire dal potenziamento YouTube (per la call Instagram) o dalla catalogazione Potlatch?
+14. **Torrent**: Usi gia Transmission o altro client? Integrare direttamente il seeding?
+15. **Ghost vs integrato**: Percorsi tematici dentro Speculum o esportati verso Ghost esterno?
+16. **Federazione**: Altre librerie/archivi sono gia interessati? Serve subito il multi-istanza?
+17. **Metadati culturali**: Quali campi sono essenziali? (periodo storico, movimento, formato originale, provenienza, licenza, rischio scomparsa)
+18. **Trascrizione video**: Serve ricerca nel parlato dei video YouTube? (Whisper integration)
+19. **OCR documenti**: Prevedi di archiviare scan di zine/libri? Serve full-text search nei PDF?
+20. **Archive.org**: Upload automatico per ridondanza o gestione manuale?
 
 ---
 
@@ -250,6 +314,67 @@ Riferimento: [Awesome Web Archiving](https://github.com/iipc/awesome-web-archivi
 
 ---
 
+## Roadmap Celeste (Integrazione Controcultura Italiana)
+
+### Fase C1: YouTube Potenziato
+*Per rispondere alla call pubblica sui canali YouTube*
+- [ ] Import batch di interi canali YouTube
+- [ ] Preservazione playlist originali con ordine
+- [ ] Monitoring automatico nuovi video
+- [ ] Metadati estesi (data upload, descrizione originale, commenti)
+- [ ] Trascrizione automatica con Whisper (ricerca nel parlato)
+
+### Fase C2: Metadati Culturali
+*Per la catalogazione stile Potlatch*
+- [ ] Campi Dublin Core (standard bibliotecario)
+- [ ] Periodo storico ("anni 80", "pre-internet")
+- [ ] Movimento culturale ("cyberpunk", "autonomia", "punk")
+- [ ] Formato originale ("VHS", "zine cartacea", "BBS")
+- [ ] Provenienza ("Archivio Primo Moroni", "collezione privata")
+- [ ] Stato licenza ("pubblico dominio", "fair use", "da verificare")
+- [ ] Livello rischio scomparsa (alto/medio/basso)
+
+### Fase C3: Collezioni e Narrativa
+*Per i percorsi tematici di Potlatch*
+- [ ] Sistema Collections con curatore e descrizione
+- [ ] Narrativa in markdown per ogni collezione
+- [ ] Export compatibile Ghost/BookStack
+- [ ] Pagine pubbliche per collezioni
+- [ ] Embedding in siti esterni
+
+### Fase C4: Distribuzione P2P
+*Per la diffusione via torrent*
+- [ ] Generazione automatica .torrent per ogni mirror
+- [ ] Integrazione Transmission per seeding automatico
+- [ ] Magnet link nelle pagine sito
+- [ ] Statistiche download/seed
+- [ ] Tracker privato opzionale
+
+### Fase C5: Ridondanza Archive.org
+*Per la preservazione a lungo termine*
+- [ ] Upload automatico WARC su archive.org
+- [ ] Salvataggio link permanenti nel DB
+- [ ] Verifica periodica disponibilita
+- [ ] Fallback automatico se mirror locale non disponibile
+
+### Fase C6: Documenti e Scan
+*Per zine, libri, materiale cartaceo digitalizzato*
+- [ ] Supporto PDF con viewer integrato
+- [ ] OCR automatico con Tesseract
+- [ ] Full-text search nei documenti
+- [ ] Supporto DJVU, CBZ/CBR (fumetti/zine)
+- [ ] Estrazione copertina come thumbnail
+
+### Fase C7: Federazione
+*Per la rete di librerie e archivi*
+- [ ] API pubblica documentata
+- [ ] Sincronizzazione cataloghi tra istanze
+- [ ] Catalogo unificato federato
+- [ ] Identita visiva personalizzabile per istanza
+- [ ] Sistema di crediti ai contributori
+
+---
+
 ## Risorse e Riferimenti
 
 ### Best Practices
@@ -262,11 +387,87 @@ Riferimento: [Awesome Web Archiving](https://github.com/iipc/awesome-web-archivi
 - [Awesome Web Archiving](https://github.com/iipc/awesome-web-archiving)
 - [Playwright Python](https://playwright.dev/python/)
 - [Flask Prometheus Exporter](https://github.com/rycus86/prometheus_flask_exporter)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - Download YouTube
+- [Whisper](https://github.com/openai/whisper) - Trascrizione audio
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) - OCR documenti
 
 ### Standard
 - [WARC ISO 28500](https://www.loc.gov/preservation/digital/formats/fdd/fdd000236.shtml)
+- [Dublin Core Metadata](https://www.dublincore.org/specifications/dublin-core/)
 - [robots.txt Standard](https://www.robotstxt.org/)
+
+### Controcultura Italiana (Archivi Esistenti)
+- [Archivio Grafton 9](https://grafton9.net/) - Decoder e cyberpunk italiano
+- [Archivio Primo Moroni](https://www.inventati.org/apm/) - Materiali politici, collettivo Autistici
+- [Archive.org - Italian Underground](https://archive.org/search?query=italian+underground)
+- [Monoskop](https://monoskop.org/) - Wiki arti e culture media
+
+### Progetti Ispiratori
+- [The Public Domain Review](https://publicdomainreview.org/) - Modello per narrativa culturale
+- [Monoskop](https://monoskop.org/Monoskop) - Wiki collaborativa arti/media
+- [UbuWeb](https://ubu.com/) - Archivio avanguardie
+
+### Celeste - Documenti Progetto
+- [Proposta Potlatch](https://docs.google.com/document/d/1JKwmUpXGxKLdjA8FhSaI9AKs1CxtsVEN_U8iHfId-qA/edit)
+- [Call canali YouTube](https://www.instagram.com/p/DIvjHNHsMvJ/)
+- [Bando Cariplo 2025](https://www.fondazionecariplo.it/static/upload/tes/testo_bando-valore-della-cultura-2025.pdf)
+- [Libreria Potlatch](https://www.instagram.com/potlatch.milano/)
+- [Intervista Potlatch](https://www.noizona2.it/libreria-potlatch/)
+
+### Tool per Catalogazione
+- [Ghost CMS](https://ghost.org/) - Publishing platform
+- [Koha](https://koha-community.org/) - Sistema gestione biblioteche
+- [Invenio](https://inveniosoftware.org/) - Framework repository digitali
+- [BookStack](https://www.bookstackapp.com/) - Wiki/documentazione
 
 ---
 
-*Documento generato il 29/12/2024 - Speculum v1.0*
+## Architettura Celeste-Speculum
+
+```
++-----------------------------------------------------------+
+|                    SPECULUM / CELESTE                      |
++-----------------------------------------------------------+
+|  +----------+  +----------+  +----------+  +----------+   |
+|  |   Web    |  | YouTube  |  |   Docs   |  |   Zine   |   |
+|  |  Mirror  |  | Archive  |  |   Scan   |  |   PDF    |   |
+|  +----+-----+  +----+-----+  +----+-----+  +----+-----+   |
+|       |             |             |             |          |
+|       +-------------+-------------+-------------+          |
+|                           |                                |
+|              +------------v------------+                   |
+|              |    Metadata Layer       |                   |
+|              |  - Dublin Core          |                   |
+|              |  - Periodo/Movimento    |                   |
+|              |  - Provenienza          |                   |
+|              |  - Tags/Collezioni      |                   |
+|              +------------+------------+                   |
+|                           |                                |
+|       +-------------------+-------------------+            |
+|       v                   v                   v            |
+|  +----------+       +----------+       +----------+        |
+|  | Storage  |       | Archive  |       | Torrent  |        |
+|  | Locale   |       |   .org   |       |  Seed    |        |
+|  +----------+       +----------+       +----------+        |
+|                                                            |
+|  +------------------------------------------------------+  |
+|  |              Frontend Pubblico                       |  |
+|  |  - Catalogo navigabile                              |  |
+|  |  - Percorsi tematici (Ghost-style)                  |  |
+|  |  - Ricerca full-text (web + video + documenti)      |  |
+|  |  - Download torrent / magnet link                   |  |
+|  |  - Collezioni curate con narrativa                  |  |
+|  +------------------------------------------------------+  |
+|                                                            |
+|  +------------------------------------------------------+  |
+|  |              Federazione                             |  |
+|  |  - API REST pubblica                                |  |
+|  |  - Sync tra istanze (Potlatch <-> Grafton9 <-> ...) |  |
+|  |  - Catalogo unificato                               |  |
+|  +------------------------------------------------------+  |
++-----------------------------------------------------------+
+```
+
+---
+
+*Documento generato il 29/12/2024 - Speculum v1.0 + Celeste*
