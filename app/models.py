@@ -25,6 +25,9 @@ class User(db.Model):
     mirror_requests = db.relationship('MirrorRequest', backref='requester', lazy=True, foreign_keys='MirrorRequest.user_id')
 
     def set_password(self, password):
+        """Set password with validation. Minimum 8 characters required."""
+        if len(password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
         self.password_hash = generate_password_hash(password, method=PASSWORD_HASH_METHOD)
 
     def check_password(self, password):
@@ -72,6 +75,10 @@ class MirrorRequest(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     ip_address = db.Column(db.String(45))  # For rate limiting anonymous requests
+
+    # Review tracking
+    reviewed_at = db.Column(db.DateTime)
+    admin_notes = db.Column(db.Text)
 
     # Relationships
     site = db.relationship('Site', backref='mirror_request', foreign_keys=[site_id])
@@ -126,7 +133,7 @@ class Site(db.Model):
     channel_id = db.Column(db.String(100))
 
     # Crawl settings
-    depth = db.Column(db.Integer, default=1)  # 1 = first level only, 0 = infinite
+    depth = db.Column(db.Integer, default=0)  # 0 = infinite, higher = limited depth
     include_external = db.Column(db.Boolean, default=False)
     crawl_method = db.Column(db.String(20), default='wget')  # 'wget' or 'singlefile'
 
@@ -146,6 +153,12 @@ class Site(db.Model):
 
     # Screenshot
     screenshot_path = db.Column(db.String(500))  # Relative path to screenshot
+
+    # Wayback Machine integration
+    wayback_job_id = db.Column(db.String(100))  # Job ID from Internet Archive
+    wayback_url = db.Column(db.String(500))  # Archived URL on Wayback Machine
+    wayback_saved_at = db.Column(db.DateTime)  # Last successful save timestamp
+    wayback_status = db.Column(db.String(20))  # pending, success, failed
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -171,7 +184,10 @@ class Site(db.Model):
             'page_count': self.page_count,
             'error_message': self.error_message,
             'screenshot_path': self.screenshot_path,
-            'mirror_path': self._get_mirror_path()
+            'mirror_path': self._get_mirror_path(),
+            'wayback_url': self.wayback_url,
+            'wayback_status': self.wayback_status,
+            'wayback_saved_at': self.wayback_saved_at.isoformat() if self.wayback_saved_at else None
         }
 
     def _get_mirror_path(self):
@@ -266,3 +282,61 @@ class CrawlLog(db.Model):
     wget_log = db.Column(db.Text)
 
     site = db.relationship('Site', backref='crawl_logs')
+
+
+class CulturalMetadata(db.Model):
+    """Dublin Core metadata + Celeste extensions for cultural archiving"""
+    __tablename__ = 'cultural_metadata'
+
+    id = db.Column(db.Integer, primary_key=True)
+    site_id = db.Column(db.Integer, db.ForeignKey('sites.id'), unique=True, nullable=False, index=True)
+
+    # Dublin Core - relevant fields for web archiving
+    dc_title = db.Column(db.String(500))  # Original title
+    dc_creator = db.Column(db.String(500))  # Author/organization
+    dc_date = db.Column(db.String(100))  # Original date (flexible: "1985", "anni 80", "2000-2010")
+    dc_description = db.Column(db.Text)  # Extended description
+    dc_subject = db.Column(db.Text)  # Keywords, topics (comma-separated)
+    dc_type = db.Column(db.String(100))  # Type: website, blog, forum, zine, video, bbs
+    dc_language = db.Column(db.String(10), default='it')  # Language code
+    dc_rights = db.Column(db.String(200))  # License status
+    dc_source = db.Column(db.String(500))  # Original source (if mirror of another archive)
+
+    # Celeste extensions - Italian counterculture specific
+    historical_period = db.Column(db.String(100))  # "pre-internet", "anni 80", "anni 90", "2000-2010"
+    cultural_movement = db.Column(db.String(200))  # "cyberpunk", "autonomia", "punk", "squatter"
+    original_format = db.Column(db.String(100))  # VHS, BBS, zine cartacea, CD-ROM, floppy
+    provenance = db.Column(db.String(500))  # "Archivio Primo Moroni", "collezione privata", etc.
+    risk_level = db.Column(db.String(20))  # high, medium, low
+    risk_notes = db.Column(db.Text)  # Why is this at risk of disappearing
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship
+    site = db.relationship('Site', backref=db.backref('cultural_metadata', uselist=False))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'site_id': self.site_id,
+            # Dublin Core
+            'dc_title': self.dc_title,
+            'dc_creator': self.dc_creator,
+            'dc_date': self.dc_date,
+            'dc_description': self.dc_description,
+            'dc_subject': self.dc_subject,
+            'dc_type': self.dc_type,
+            'dc_language': self.dc_language,
+            'dc_rights': self.dc_rights,
+            'dc_source': self.dc_source,
+            # Celeste extensions
+            'historical_period': self.historical_period,
+            'cultural_movement': self.cultural_movement,
+            'original_format': self.original_format,
+            'provenance': self.provenance,
+            'risk_level': self.risk_level,
+            'risk_notes': self.risk_notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

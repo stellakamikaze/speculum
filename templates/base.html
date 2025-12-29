@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Speculum{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block oembed_discovery %}{% endblock %}
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -13,14 +14,23 @@
             <a href="{{ url_for('index') }}">SPECULUM</a>
             <span class="nav-tagline">web mirror archive</span>
         </div>
+
+        <!-- Hamburger menu for mobile -->
+        <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+        </button>
+
         <div class="nav-links">
-            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Catalogo</a>
+            <a href="{{ url_for('catalog') }}" {% if request.endpoint == 'catalog' %}class="active"{% endif %}>Catalogo</a>
             <a href="{{ url_for('sites_list') }}" {% if request.endpoint in ['sites_list', 'add_site', 'site_detail'] %}class="active"{% endif %}>Siti</a>
             <a href="{{ url_for('crawl_dashboard') }}" {% if request.endpoint in ['crawl_dashboard', 'view_crawl_log'] %}class="active"{% endif %}>Dashboard</a>
             {% if current_user and current_user.can_edit() %}
             <a href="{{ url_for('bulk_add_sites') }}" {% if request.endpoint in ['bulk_add_sites', 'bulk_results'] %}class="active"{% endif %}>Import</a>
             {% endif %}
             <a href="{{ url_for('categories_list') }}" {% if request.endpoint == 'categories_list' %}class="active"{% endif %}>Categorie</a>
+            <a href="{{ url_for('search_page') }}" {% if request.endpoint == 'search_page' %}class="active"{% endif %}>Cerca</a>
             <a href="{{ url_for('request_mirror') }}" {% if request.endpoint == 'request_mirror' %}class="active"{% endif %}>Richiedi</a>
             {% if current_user and current_user.is_admin() %}
             <a href="{{ url_for('admin_mirror_requests') }}" {% if 'admin' in request.endpoint %}class="active"{% endif %}>Admin</a>
@@ -43,10 +53,17 @@
     </main>
     
     <footer class="main-footer">
-        <span class="footer-brand">SPECULUM</span>
-        <span class="footer-divider">—</span>
-        <span>Digital preservation through local mirroring</span>
-        <span class="footer-version">v1.0</span>
+        <div class="footer-content">
+            <span class="footer-brand">SPECULUM</span>
+            <span class="footer-divider">—</span>
+            <span class="footer-tagline">Digital preservation through local mirroring</span>
+        </div>
+        <div class="footer-links">
+            <a href="{{ url_for('about') }}">Chi Siamo</a>
+            <a href="{{ url_for('privacy') }}">Privacy</a>
+            <a href="{{ url_for('contact') }}">Contatti</a>
+        </div>
+        <div class="footer-version">v1.0</div>
     </footer>
     
     {% block scripts %}{% endblock %}
@@ -85,6 +102,38 @@
 
         // Apply saved theme on load
         applyTheme(getTheme());
+
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const navToggle = document.querySelector('.nav-toggle');
+            const navLinks = document.querySelector('.nav-links');
+
+            if (navToggle && navLinks) {
+                navToggle.addEventListener('click', function() {
+                    const isOpen = navLinks.classList.toggle('open');
+                    navToggle.classList.toggle('open', isOpen);
+                    navToggle.setAttribute('aria-expanded', isOpen);
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!navToggle.contains(e.target) && !navLinks.contains(e.target)) {
+                        navLinks.classList.remove('open');
+                        navToggle.classList.remove('open');
+                        navToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                // Close menu when clicking a link
+                navLinks.querySelectorAll('a').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        navLinks.classList.remove('open');
+                        navToggle.classList.remove('open');
+                        navToggle.setAttribute('aria-expanded', 'false');
+                    });
+                });
+            }
+        });
 
         // Toast notification helper (XSS-safe)
         function showToast(message, type = 'success') {

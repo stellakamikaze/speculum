@@ -1,0 +1,29 @@
+{% extends "embed/base.html" %}
+
+{% block title %}Ricerca: {{ query }} - Speculum{% endblock %}
+
+{% block content %}
+<div class="embed-search">
+    <div class="embed-search-header">
+        <span class="embed-provider">SPECULUM</span>
+        <span class="embed-query">Ricerca: <strong>{{ query }}</strong></span>
+        <span class="embed-count">{{ results|length }} risultati</span>
+    </div>
+    <div class="embed-search-results">
+        {% for result in results[:6] %}
+        <a href="{% if result.type == 'site' %}{{ url_for('site_detail', site_id=result.site_id, _external=True) }}{% else %}{{ url_for('videos_list', site_id=result.site_id, _external=True) }}{% endif %}" target="_blank" class="embed-search-item">
+            <span class="embed-search-type">{% if result.type == 'site' %}Sito{% else %}Video{% endif %}</span>
+            <span class="embed-search-title">{{ result.name or result.title }}</span>
+            {% if result.snippet %}
+            <span class="embed-search-snippet">{{ result.snippet|safe }}</span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% if results|length > 6 %}
+    <a href="{{ url_for('search_page', q=query, _external=True) }}" target="_blank" class="embed-search-more">
+        Vedi tutti i {{ results|length }} risultati
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

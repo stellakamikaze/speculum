@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Chi Siamo — Speculum{% endblock %}
+
+{% block content %}
+<section class="static-page">
+    <div class="page-header">
+        <span class="section-label">About</span>
+        <h1>Chi Siamo</h1>
+    </div>
+
+    <div class="content-block">
+        <h2>Il Progetto Speculum</h2>
+        <p class="lead">
+            Speculum e un progetto di archiviazione digitale dedicato alla preservazione
+            della memoria culturale italiana, con particolare attenzione alla controcultura,
+            agli spazi indipendenti e ai contenuti a rischio di scomparsa.
+        </p>
+
+        <p>
+            <!-- PLACEHOLDER: Inserire qui la storia e la descrizione del progetto -->
+            Il nome "Speculum" (specchio in latino) riflette la nostra missione:
+            creare un riflesso fedele del web che sta scomparendo, preservandolo
+            per le generazioni future.
+        </p>
+    </div>
+
+    <div class="content-block">
+        <h2>Cosa Archiviamo</h2>
+        <ul class="feature-list">
+            <li>Siti web storici e blog personali</li>
+            <li>Forum e comunita online</li>
+            <li>Zine digitali e pubblicazioni indipendenti</li>
+            <li>Canali YouTube e contenuti video</li>
+            <li>Documentazione di movimenti culturali</li>
+            <li>Archivi di spazi occupati e centri sociali</li>
+        </ul>
+    </div>
+
+    <div class="content-block">
+        <h2>Tecnologia</h2>
+        <p>
+            Speculum utilizza tecnologie open source per l'archiviazione:
+        </p>
+        <ul class="feature-list">
+            <li><strong>wget</strong> — Per il mirroring completo di siti web</li>
+            <li><strong>yt-dlp</strong> — Per l'archiviazione di video YouTube</li>
+            <li><strong>SingleFile</strong> — Per siti JavaScript-heavy</li>
+            <li><strong>Ollama + TinyLlama</strong> — Per la categorizzazione AI dei contenuti</li>
+        </ul>
+    </div>
+
+    <div class="content-block">
+        <h2>Contribuire</h2>
+        <p>
+            Puoi contribuire al progetto in diversi modi:
+        </p>
+        <ul class="feature-list">
+            <li>Segnalando siti a rischio tramite il modulo di richiesta</li>
+            <li>Contribuendo al codice su GitHub</li>
+            <li>Diffondendo il progetto nella tua comunita</li>
+        </ul>
+        <div class="action-buttons">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Proponi un Sito</a>
+        </div>
+    </div>
+
+    <div class="content-block">
+        <h2>Contatti</h2>
+        <p>
+            <!-- PLACEHOLDER: Inserire qui i contatti del progetto -->
+            Per informazioni, collaborazioni o segnalazioni, visita la pagina
+            <a href="{{ url_for('contact') }}">Contatti</a>.
+        </p>
+    </div>
+</section>
+{% endblock %}

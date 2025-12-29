@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Speculum — Archivio Digitale{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="landing-hero">
+    <div class="hero-content">
+        <span class="section-label">Volume I</span>
+        <h1 class="hero-title">Speculum</h1>
+        <p class="hero-subtitle">Archivio Digitale della Controcultura Italiana</p>
+        <p class="hero-description">
+            Preserviamo la memoria digitale di siti web, canali YouTube e contenuti a rischio di scomparsa.
+            Un progetto di archiviazione culturale per le generazioni future.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('catalog') }}" class="btn btn-primary btn-large">Esplora l'Archivio</a>
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-secondary btn-large">Proponi un Sito</a>
+        </div>
+    </div>
+    <div class="hero-stats">
+        <div class="stat-item">
+            <span class="stat-numeral">{{ stats.total_sites }}</span>
+            <span class="stat-label">Siti Archiviati</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-numeral">{{ stats.total_videos }}</span>
+            <span class="stat-label">Video Preservati</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-numeral">{{ "%.1f"|format(stats.total_size / 1073741824) }}</span>
+            <span class="stat-label">GB di Storia</span>
+        </div>
+    </div>
+</section>
+
+<!-- Random Gallery Section -->
+<section class="gallery-section">
+    <div class="section-header">
+        <span class="section-label">Volume II</span>
+        <h2>Dall'Archivio</h2>
+        <p class="section-description">Immagini casuali dai siti preservati</p>
+    </div>
+    <div class="gallery-grid" id="randomGallery">
+        <div class="gallery-loading">Caricamento galleria...</div>
+    </div>
+    <div class="gallery-actions">
+        <button type="button" class="btn btn-secondary" onclick="loadRandomGallery()">Altre Immagini</button>
+    </div>
+</section>
+
+<!-- Mission Section -->
+<section class="mission-section">
+    <div class="section-header">
+        <span class="section-label">Volume III</span>
+        <h2>La Nostra Missione</h2>
+    </div>
+    <div class="mission-grid">
+        <div class="mission-card">
+            <h3>Preservazione</h3>
+            <p>Archiviamo siti web e contenuti digitali prima che scompaiano, creando copie complete e navigabili.</p>
+        </div>
+        <div class="mission-card">
+            <h3>Accessibilita</h3>
+            <p>Rendiamo accessibili contenuti storici e culturali che altrimenti andrebbero perduti nel tempo.</p>
+        </div>
+        <div class="mission-card">
+            <h3>Memoria Collettiva</h3>
+            <p>Costruiamo un archivio della controcultura italiana, dalla scena underground agli spazi occupati.</p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="cta-content">
+        <h2>Conosci un Sito a Rischio?</h2>
+        <p>Aiutaci a preservare la memoria digitale. Segnala siti web, blog, forum o canali YouTube che meritano di essere archiviati.</p>
+        <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Proponi un Sito</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadRandomGallery() {
+    var gallery = document.getElementById('randomGallery');
+
+    // Clear gallery using safe DOM methods
+    while (gallery.firstChild) {
+        gallery.removeChild(gallery.firstChild);
+    }
+
+    // Add loading message
+    var loadingDiv = document.createElement('div');
+    loadingDiv.className = 'gallery-loading';
+    loadingDiv.textContent = 'Caricamento...';
+    gallery.appendChild(loadingDiv);
+
+    fetch('/api/random-media?count=12')
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            // Clear gallery
+            while (gallery.firstChild) {
+                gallery.removeChild(gallery.firstChild);
+            }
+
+            if (data.images && data.images.length > 0) {
+                data.images.forEach(function(img) {
+                    var item = document.createElement('a');
+                    item.href = '/sites/' + img.site_id;
+                    item.className = 'gallery-item';
+                    item.title = img.site_name;
+
+                    var imgEl = document.createElement('img');
+                    imgEl.src = img.path;
+                    imgEl.alt = img.filename;
+                    imgEl.loading = 'lazy';
+                    imgEl.onerror = function() {
+                        this.parentElement.style.display = 'none';
+                    };
+
+                    var overlay = document.createElement('div');
+                    overlay.className = 'gallery-overlay';
+                    overlay.textContent = img.site_name;
+
+                    item.appendChild(imgEl);
+                    item.appendChild(overlay);
+                    gallery.appendChild(item);
+                });
+            } else {
+                var emptyMsg = document.createElement('p');
+                emptyMsg.className = 'gallery-empty';
+                emptyMsg.textContent = 'Nessuna immagine disponibile. Aggiungi siti all\'archivio!';
+                gallery.appendChild(emptyMsg);
+            }
+        })
+        .catch(function(err) {
+            // Clear and show error
+            while (gallery.firstChild) {
+                gallery.removeChild(gallery.firstChild);
+            }
+            var errorMsg = document.createElement('p');
+            errorMsg.className = 'gallery-empty';
+            errorMsg.textContent = 'Errore nel caricamento della galleria.';
+            gallery.appendChild(errorMsg);
+            console.error('Gallery error:', err);
+        });
+}
+
+// Load gallery on page load
+document.addEventListener('DOMContentLoaded', loadRandomGallery);
+</script>
+{% endblock %}

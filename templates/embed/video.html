@@ -1,0 +1,21 @@
+{% extends "embed/base.html" %}
+
+{% block title %}{{ video.title }} - Speculum{% endblock %}
+
+{% block content %}
+<div class="embed-video">
+    <video controls preload="metadata" class="embed-video-player">
+        <source src="{{ url_for('serve_video', site_id=video.site_id, video_id=video.video_id, filename=video_filename) }}" type="video/mp4">
+        Il tuo browser non supporta la riproduzione video.
+    </video>
+    <div class="embed-video-info">
+        <h3 class="embed-title">{{ video.title }}</h3>
+        <div class="embed-meta">
+            <span class="embed-provider">SPECULUM</span>
+            {% if video.site %}
+            <span class="embed-channel">{{ video.site.name }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

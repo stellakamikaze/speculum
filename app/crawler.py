@@ -39,6 +39,47 @@ PERMANENT_ERRORS = [
 ]
 
 
+def _post_crawl_tasks(site_id):
+    """
+    Run post-crawl tasks: full-text indexing and Wayback Machine save.
+    Runs in a separate thread to avoid blocking.
+    """
+    import time
+
+    def run_tasks():
+        # Wait a bit to ensure the main transaction commits
+        time.sleep(2)
+
+        try:
+            # Create new Flask app context for this thread
+            from app import create_app
+            app = create_app()
+
+            with app.app_context():
+                # Full-text search indexing
+                try:
+                    from app.search import index_site
+                    index_site(site_id)
+                    logger.info(f"FTS indexed site {site_id}")
+                except Exception as e:
+                    logger.warning(f"FTS indexing failed for site {site_id}: {e}")
+
+                # Wayback Machine save
+                try:
+                    from app.wayback import save_site_to_wayback
+                    save_site_to_wayback(site_id)
+                    logger.info(f"Wayback save initiated for site {site_id}")
+                except Exception as e:
+                    logger.warning(f"Wayback save failed for site {site_id}: {e}")
+
+        except Exception as e:
+            logger.error(f"Post-crawl tasks failed for site {site_id}: {e}")
+
+    # Run in background thread
+    thread = Thread(target=run_tasks, daemon=True)
+    thread.start()
+
+
 def classify_error(error_message):
     if not error_message:
         return 'unknown'
@@ -164,7 +205,7 @@ def get_crawl_urls(url):
     return [root_url, original_url]
 
 
-def build_wget_command(url, output_path, depth=1, include_external=False, archive_media=True):
+def build_wget_command(url, output_path, depth=0, include_external=False, archive_media=True):
     """Build wget command with best practices for complete site archiving.
 
     Best practices implemented:
@@ -251,6 +292,9 @@ def mark_crawl_success(site, crawl_log, size_bytes, page_count):
     crawl_log.status = 'success'
     crawl_log.pages_crawled = page_count
     crawl_log.size_bytes = size_bytes
+
+    # Post-crawl integrations (non-blocking)
+    _post_crawl_tasks(site.id)
 
 
 def handle_crawl_error(site, crawl_log, error_message, db):
@@ -481,8 +525,21 @@ def crawl_youtube(site_id):
                                         info = json.load(jf)
                                     vid = info.get('id', vdir)
                                     if not Video.query.filter_by(site_id=site.id, video_id=vid).first():
-                                        video = Video(site_id=site.id, video_id=vid, title=info.get('title','')[:500], status='ready')
+                                        video = Video(
+                                            site_id=site.id,
+                                            video_id=vid,
+                                            title=info.get('title', '')[:500],
+                                            description=info.get('description', '')[:5000] if info.get('description') else None,
+                                            status='ready'
+                                        )
                                         db.session.add(video)
+                                        db.session.flush()  # Get the ID for indexing
+                                        # Index video for full-text search
+                                        try:
+                                            from app.search import index_video
+                                            index_video(video.id)
+                                        except Exception as idx_err:
+                                            logger.warning(f"Video FTS indexing failed: {idx_err}")
                                         video_count += 1
                                 except (json.JSONDecodeError, IOError, KeyError) as e:
                                     logger.warning(f"Failed to parse video info {f}: {e}")

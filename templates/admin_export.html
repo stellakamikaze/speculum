@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Export - Speculum{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Export & Backup</h1>
+    <p>Esporta i siti per backup o per Ghost CMS</p>
+</div>
+
+<div class="export-info">
+    <div class="info-card">
+        <h3>{{ total_sites }}</h3>
+        <p>Siti totali</p>
+    </div>
+    <div class="info-card">
+        <h3>{{ site_count }}</h3>
+        <p>Pronti (ready)</p>
+    </div>
+</div>
+
+<!-- Backup/Restore Section -->
+<div class="export-form-container">
+    <h2>Backup Lista Siti</h2>
+    <p class="section-description">Esporta la lista siti per backup o per ricaricarla in produzione</p>
+
+    <div class="export-buttons">
+        <a href="{{ url_for('api_export_sites', format='txt') }}" class="btn btn-primary">
+            Scarica URL (TXT)
+        </a>
+        <a href="{{ url_for('api_export_sites', format='json') }}" class="btn btn-secondary">
+            Scarica Completo (JSON)
+        </a>
+        <a href="{{ url_for('api_export_sites', format='csv') }}" class="btn btn-secondary">
+            Scarica Tabella (CSV)
+        </a>
+    </div>
+
+    <div class="export-notes">
+        <h3>Formati disponibili</h3>
+        <ul>
+            <li><strong>TXT:</strong> Lista URL semplice, compatibile con l'import massivo</li>
+            <li><strong>JSON:</strong> Backup completo con tutte le impostazioni</li>
+            <li><strong>CSV:</strong> Formato tabellare per Excel/fogli di calcolo</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Import Section -->
+<div class="export-form-container">
+    <h2>Importa da Backup</h2>
+    <p class="section-description">Carica un file JSON di backup per ripristinare i siti</p>
+
+    <form id="importForm" class="export-form">
+        <div class="form-group">
+            <label for="importFile">File JSON backup</label>
+            <input type="file" id="importFile" accept=".json" class="form-input">
+        </div>
+        <button type="submit" class="btn btn-primary">Importa Siti</button>
+    </form>
+    <div id="importResult" class="import-result" style="display:none;"></div>
+</div>
+
+<!-- Ghost Export Section -->
+<div class="export-form-container">
+    <h2>Export per Ghost CMS</h2>
+    <p class="section-description">Esporta in formato compatibile con Ghost</p>
+
+    <form id="exportForm" class="export-form">
+        <div class="form-group">
+            <label for="type">Tipo di contenuto</label>
+            <select id="type" name="type">
+                <option value="">Tutti</option>
+                <option value="website">Solo siti web</option>
+                <option value="youtube">Solo canali YouTube</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="category_id">Categoria</label>
+            <select id="category_id" name="category_id">
+                <option value="">Tutte le categorie</option>
+                {% for cat in categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-secondary">
+            Scarica Export Ghost
+        </button>
+    </form>
+
+    <div class="export-notes">
+        <h3>Note Ghost</h3>
+        <ul>
+            <li>Include solo siti con stato "ready"</li>
+            <li>I metadati culturali vengono inclusi nel corpo del post</li>
+            <li>Le categorie diventano tag Ghost</li>
+            <li>Importa in Ghost tramite Labs > Import</li>
+        </ul>
+    </div>
+</div>
+
+<div class="admin-links">
+    <h3>Altre Funzioni Admin</h3>
+    <a href="{{ url_for('admin_backup') }}" class="btn btn-secondary">Backup Richieste</a>
+    <a href="{{ url_for('admin_mirror_requests') }}" class="btn btn-secondary">Richieste Mirror</a>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Gestione Utenti</a>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.export-info {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.info-card {
+    padding: 1.5rem;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    text-align: center;
+}
+.info-card h3 {
+    font-size: 2rem;
+    margin: 0;
+    color: var(--accent-color, #007bff);
+}
+.info-card p {
+    margin: 0.5rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+.export-form-container {
+    background: var(--card-bg, #fff);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    margin-bottom: 2rem;
+}
+.export-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 400px;
+    margin-bottom: 2rem;
+}
+.export-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.export-form select {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+.export-notes {
+    border-top: 1px solid var(--border-color, #ddd);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+.export-notes h3 {
+    margin-top: 0;
+}
+.export-notes ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+.admin-links {
+    margin-top: 2rem;
+}
+.admin-links h3 {
+    margin-bottom: 1rem;
+}
+.admin-links .btn {
+    margin-right: 0.5rem;
+}
+.export-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.section-description {
+    color: var(--text-muted, #666);
+    margin-bottom: 1rem;
+}
+.import-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-muted, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+.import-result h4 {
+    margin-top: 0;
+}
+.import-result .error {
+    color: var(--error, #d00);
+}
+.import-result ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Ghost export form
+document.getElementById('exportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const type = document.getElementById('type').value;
+    const categoryId = document.getElementById('category_id').value;
+
+    let url = '{{ url_for("api_export_ghost") }}';
+    const params = new URLSearchParams();
+    if (type) params.append('type', type);
+    if (categoryId) params.append('category_id', categoryId);
+
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+
+    window.location.href = url;
+});
+
+// Import form - using safe DOM methods
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('importFile');
+    const resultDiv = document.getElementById('importResult');
+
+    // Clear previous results
+    resultDiv.textContent = '';
+    resultDiv.style.display = 'none';
+
+    if (!fileInput.files.length) {
+        const errorP = document.createElement('p');
+        errorP.className = 'error';
+        errorP.textContent = 'Seleziona un file JSON';
+        resultDiv.appendChild(errorP);
+        resultDiv.style.display = 'block';
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        try {
+            const data = JSON.parse(event.target.result);
+
+            fetch('{{ url_for("api_import_sites") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                resultDiv.textContent = '';
+
+                const title = document.createElement('h4');
+                title.textContent = 'Risultato Import';
+                resultDiv.appendChild(title);
+
+                const importedP = document.createElement('p');
+                const importedStrong = document.createElement('strong');
+                importedStrong.textContent = 'Importati: ';
+                importedP.appendChild(importedStrong);
+                importedP.appendChild(document.createTextNode(result.imported));
+                resultDiv.appendChild(importedP);
+
+                const skippedP = document.createElement('p');
+                const skippedStrong = document.createElement('strong');
+                skippedStrong.textContent = 'Saltati (gia esistenti): ';
+                skippedP.appendChild(skippedStrong);
+                skippedP.appendChild(document.createTextNode(result.skipped));
+                resultDiv.appendChild(skippedP);
+
+                if (result.errors && result.errors.length > 0) {
+                    const errTitle = document.createElement('p');
+                    errTitle.className = 'error';
+                    const errStrong = document.createElement('strong');
+                    errStrong.textContent = 'Errori:';
+                    errTitle.appendChild(errStrong);
+                    resultDiv.appendChild(errTitle);
+
+                    const errList = document.createElement('ul');
+                    result.errors.forEach(function(err) {
+                        const li = document.createElement('li');
+                        li.textContent = err;
+                        errList.appendChild(li);
+                    });
+                    resultDiv.appendChild(errList);
+                }
+
+                if (result.imported > 0) {
+                    const linkP = document.createElement('p');
+                    const link = document.createElement('a');
+                    link.href = '{{ url_for("sites_list") }}';
+                    link.className = 'btn btn-primary';
+                    link.textContent = 'Vai ai Siti';
+                    linkP.appendChild(link);
+                    resultDiv.appendChild(linkP);
+                }
+
+                resultDiv.style.display = 'block';
+            })
+            .catch(function(err) {
+                resultDiv.textContent = '';
+                const errorP = document.createElement('p');
+                errorP.className = 'error';
+                errorP.textContent = 'Errore: ' + err.message;
+                resultDiv.appendChild(errorP);
+                resultDiv.style.display = 'block';
+            });
+        } catch (err) {
+            resultDiv.textContent = '';
+            const errorP = document.createElement('p');
+            errorP.className = 'error';
+            errorP.textContent = 'Errore parsing JSON: ' + err.message;
+            resultDiv.appendChild(errorP);
+            resultDiv.style.display = 'block';
+        }
+    };
+
+    reader.readAsText(file);
+});
+</script>
+{% endblock %}

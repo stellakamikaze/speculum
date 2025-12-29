@@ -15,3 +15,12 @@ email-validator==2.1.0
 
 # CSRF Protection
 flask-wtf==1.2.1
+
+# Ghost CMS Export
+python-slugify==8.0.1
+
+# oEmbed Image Processing
+Pillow==10.2.0
+
+# CORS Support
+flask-cors==4.0.0

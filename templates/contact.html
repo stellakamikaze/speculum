@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Contatti — Speculum{% endblock %}
+
+{% block content %}
+<section class="static-page">
+    <div class="page-header">
+        <span class="section-label">Contact</span>
+        <h1>Contatti</h1>
+    </div>
+
+    <div class="content-block">
+        <p class="lead">
+            Hai domande, suggerimenti o vuoi collaborare con il progetto Speculum?
+            Ecco come raggiungerci.
+        </p>
+    </div>
+
+    <div class="contact-grid">
+        <div class="contact-card">
+            <h2>Proponi un Sito</h2>
+            <p>
+                Conosci un sito web, un blog o un canale YouTube che merita
+                di essere preservato? Usa il nostro modulo di richiesta.
+            </p>
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Invia Richiesta</a>
+        </div>
+
+        <div class="contact-card">
+            <h2>Richieste di Rimozione</h2>
+            <p>
+                Se sei il proprietario di contenuti archiviati e desideri
+                la rimozione, contattaci specificando l'URL in questione.
+            </p>
+            <!-- PLACEHOLDER: Inserire email o form di contatto -->
+            <p class="contact-info">
+                <strong>Email:</strong> <!-- inserire email -->
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <h2>Collaborazioni</h2>
+            <p>
+                Sei un archivista, un ricercatore o gestisci un progetto simile?
+                Siamo aperti a collaborazioni e scambi di know-how.
+            </p>
+            <!-- PLACEHOLDER: Inserire contatti per collaborazioni -->
+            <p class="contact-info">
+                <strong>Email:</strong> <!-- inserire email -->
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <h2>Segnalazioni Tecniche</h2>
+            <p>
+                Hai trovato un bug o vuoi contribuire al codice?
+                Il progetto e open source.
+            </p>
+            <!-- PLACEHOLDER: Inserire link GitHub -->
+            <p class="contact-info">
+                <strong>GitHub:</strong> <!-- inserire link -->
+            </p>
+        </div>
+    </div>
+
+    <div class="content-block">
+        <h2>Note Legali</h2>
+        <p>
+            Per questioni relative alla privacy e al trattamento dei dati personali,
+            consulta la nostra <a href="{{ url_for('privacy') }}">Privacy Policy</a>.
+        </p>
+        <p>
+            Speculum opera nel rispetto delle leggi sul diritto d'autore.
+            I contenuti archiviati provengono da fonti pubbliche e vengono preservati
+            a scopo di documentazione storica e culturale.
+        </p>
+    </div>
+</section>
+{% endblock %}

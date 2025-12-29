@@ -1,0 +1,29 @@
+{% extends "embed/base.html" %}
+
+{% block title %}{{ site.name }} - Speculum{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('site_detail', site_id=site.id, _external=True) }}" target="_blank" class="embed-card embed-site">
+    {% if site.screenshot_path %}
+    <div class="embed-thumbnail">
+        <img src="{{ url_for('serve_thumbnail', site_id=site.id) }}" alt="{{ site.name }}">
+    </div>
+    {% endif %}
+    <div class="embed-content">
+        <div class="embed-header">
+            <span class="embed-provider">SPECULUM</span>
+            <span class="embed-status status-{{ site.status }}">{{ site.status }}</span>
+        </div>
+        <h3 class="embed-title">{{ site.name }}</h3>
+        {% if site.description %}
+        <p class="embed-description">{{ site.description[:150] }}{% if site.description|length > 150 %}...{% endif %}</p>
+        {% endif %}
+        <div class="embed-meta">
+            <span class="embed-url">{{ site.url }}</span>
+            {% if site.category %}
+            <span class="embed-category">{{ site.category.name }}</span>
+            {% endif %}
+        </div>
+    </div>
+</a>
+{% endblock %}

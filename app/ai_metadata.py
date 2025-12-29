@@ -6,8 +6,25 @@ import os
 import re
 import logging
 from html.parser import HTMLParser
+from markupsafe import escape as html_escape
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_ai_response(text):
+    """Sanitize AI-generated text to prevent XSS attacks.
+
+    Removes potential script tags and HTML while preserving safe text.
+    """
+    if not text:
+        return text
+    # Remove any HTML tags that might have been generated
+    text = re.sub(r'<[^>]+>', '', str(text))
+    # Remove script-related patterns
+    text = re.sub(r'javascript:', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'on\w+\s*=', '', text, flags=re.IGNORECASE)
+    # Escape remaining text for safe HTML display
+    return str(html_escape(text.strip()))
 
 MIRRORS_BASE_PATH = os.environ.get('MIRRORS_PATH', '/mirrors')
 
@@ -218,9 +235,9 @@ Rispondi SOLO con JSON valido:
                     json_str = text[start:end]
                     metadata = json.loads(json_str)
                     return {
-                        'name': metadata.get('name', '')[:200],
-                        'description': metadata.get('description', '')[:500],
-                        'category': metadata.get('category', ''),
+                        'name': sanitize_ai_response(metadata.get('name', ''))[:200],
+                        'description': sanitize_ai_response(metadata.get('description', ''))[:500],
+                        'category': sanitize_ai_response(metadata.get('category', '')),
                         'confidence': float(metadata.get('confidence', 0.7))
                     }
 
@@ -230,8 +247,8 @@ Rispondi SOLO con JSON valido:
         # Fallback
         if html_meta['title']:
             return {
-                'name': html_meta['title'][:200],
-                'description': html_meta['description'][:500] if html_meta['description'] else None,
+                'name': sanitize_ai_response(html_meta['title'])[:200],
+                'description': sanitize_ai_response(html_meta['description'])[:500] if html_meta['description'] else None,
                 'category': None,
                 'confidence': 0.3
             }

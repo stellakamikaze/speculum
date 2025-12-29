@@ -2,6 +2,12 @@
 
 {% block title %}{{ site.name }} — Speculum{% endblock %}
 
+{% block oembed_discovery %}
+<link rel="alternate" type="application/json+oembed"
+      href="{{ url_for('oembed_endpoint', url=request.url, _external=True) }}"
+      title="{{ site.name }}">
+{% endblock %}
+
 {% block content %}
 <header class="page-header swiss-diagonal">
     <span class="section-label">Dettaglio Sito</span>
@@ -72,10 +78,28 @@
             {% if site.status == 'ready' %}
             <dt>{% if site.site_type == 'youtube' %}Video scaricati{% else %}Pagine scaricate{% endif %}</dt>
             <dd>{{ site.page_count }}</dd>
-            
+
             <dt>Dimensione totale</dt>
             <dd>{{ site._human_size(site.size_bytes) }}</dd>
             {% endif %}
+
+            <dt>Internet Archive</dt>
+            <dd>
+                {% if site.wayback_status == 'success' and site.wayback_url %}
+                <a href="{{ site.wayback_url }}" target="_blank" class="wayback-link">
+                    <span class="wayback-badge wayback-success">Archiviato</span>
+                </a>
+                {% elif site.wayback_status == 'pending' %}
+                <span class="wayback-badge wayback-pending">In attesa...</span>
+                {% elif site.wayback_status == 'failed' %}
+                <span class="wayback-badge wayback-failed">Fallito</span>
+                {% else %}
+                <span class="wayback-badge wayback-none">Non salvato</span>
+                {% endif %}
+                {% if site.wayback_saved_at %}
+                <small>({{ site.wayback_saved_at.strftime('%d/%m/%Y') }})</small>
+                {% endif %}
+            </dd>
         </dl>
         
         <div class="panel-actions">
@@ -269,7 +293,191 @@
             <button type="submit" class="btn btn-secondary">Salva modifiche</button>
         </form>
     </section>
-    
+
+    <!-- Metadati Culturali -->
+    <section class="detail-panel cultural-metadata-section">
+        <h2>Metadati Culturali</h2>
+        <p class="section-description">Metadati Dublin Core e informazioni per l'archiviazione culturale (Progetto Celeste)</p>
+
+        {% if site.cultural_metadata %}
+        <div class="metadata-display">
+            <dl class="detail-list">
+                {% if site.cultural_metadata.dc_title %}
+                <dt>Titolo originale</dt>
+                <dd>{{ site.cultural_metadata.dc_title }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.dc_creator %}
+                <dt>Autore/Organizzazione</dt>
+                <dd>{{ site.cultural_metadata.dc_creator }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.dc_date %}
+                <dt>Data</dt>
+                <dd>{{ site.cultural_metadata.dc_date }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.historical_period %}
+                <dt>Periodo storico</dt>
+                <dd>{{ site.cultural_metadata.historical_period }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.cultural_movement %}
+                <dt>Movimento culturale</dt>
+                <dd>{{ site.cultural_metadata.cultural_movement }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.original_format %}
+                <dt>Formato originale</dt>
+                <dd>{{ site.cultural_metadata.original_format }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.provenance %}
+                <dt>Provenienza</dt>
+                <dd>{{ site.cultural_metadata.provenance }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.dc_rights %}
+                <dt>Licenza/Diritti</dt>
+                <dd>{{ site.cultural_metadata.dc_rights }}</dd>
+                {% endif %}
+                {% if site.cultural_metadata.risk_level %}
+                <dt>Rischio scomparsa</dt>
+                <dd>
+                    <span class="risk-badge risk-{{ site.cultural_metadata.risk_level }}">
+                        {% if site.cultural_metadata.risk_level == 'high' %}Alto
+                        {% elif site.cultural_metadata.risk_level == 'medium' %}Medio
+                        {% else %}Basso{% endif %}
+                    </span>
+                    {% if site.cultural_metadata.risk_notes %}
+                    <span class="risk-notes">{{ site.cultural_metadata.risk_notes }}</span>
+                    {% endif %}
+                </dd>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
+
+        <details class="metadata-form-toggle">
+            <summary>{% if site.cultural_metadata %}Modifica metadati{% else %}Aggiungi metadati{% endif %}</summary>
+
+            <form method="POST" action="{{ url_for('update_cultural_metadata_form', site_id=site.id) }}" class="metadata-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <fieldset>
+                    <legend>Dublin Core</legend>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dc_title">Titolo originale</label>
+                            <input type="text" id="dc_title" name="dc_title" value="{{ site.cultural_metadata.dc_title if site.cultural_metadata else '' }}" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="dc_creator">Autore/Organizzazione</label>
+                            <input type="text" id="dc_creator" name="dc_creator" value="{{ site.cultural_metadata.dc_creator if site.cultural_metadata else '' }}" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dc_date">Data (es. "1985", "anni 80")</label>
+                            <input type="text" id="dc_date" name="dc_date" value="{{ site.cultural_metadata.dc_date if site.cultural_metadata else '' }}" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="dc_type">Tipo</label>
+                            <select id="dc_type" name="dc_type" class="form-input">
+                                <option value="">— Seleziona —</option>
+                                {% set current_type = site.cultural_metadata.dc_type if site.cultural_metadata else '' %}
+                                <option value="website" {% if current_type == 'website' %}selected{% endif %}>Sito web</option>
+                                <option value="blog" {% if current_type == 'blog' %}selected{% endif %}>Blog</option>
+                                <option value="forum" {% if current_type == 'forum' %}selected{% endif %}>Forum</option>
+                                <option value="zine" {% if current_type == 'zine' %}selected{% endif %}>Zine</option>
+                                <option value="video" {% if current_type == 'video' %}selected{% endif %}>Video</option>
+                                <option value="bbs" {% if current_type == 'bbs' %}selected{% endif %}>BBS</option>
+                                <option value="archive" {% if current_type == 'archive' %}selected{% endif %}>Archivio</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dc_description">Descrizione estesa</label>
+                        <textarea id="dc_description" name="dc_description" rows="3" class="form-input">{{ site.cultural_metadata.dc_description if site.cultural_metadata else '' }}</textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dc_subject">Keywords (separate da virgola)</label>
+                            <input type="text" id="dc_subject" name="dc_subject" value="{{ site.cultural_metadata.dc_subject if site.cultural_metadata else '' }}" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="dc_language">Lingua</label>
+                            <input type="text" id="dc_language" name="dc_language" value="{{ site.cultural_metadata.dc_language if site.cultural_metadata else 'it' }}" class="form-input" placeholder="it">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dc_rights">Licenza/Diritti</label>
+                            <input type="text" id="dc_rights" name="dc_rights" value="{{ site.cultural_metadata.dc_rights if site.cultural_metadata else '' }}" class="form-input" placeholder="es. Pubblico dominio, Fair use">
+                        </div>
+                        <div class="form-group">
+                            <label for="dc_source">Fonte originale</label>
+                            <input type="text" id="dc_source" name="dc_source" value="{{ site.cultural_metadata.dc_source if site.cultural_metadata else '' }}" class="form-input" placeholder="es. Archive.org, altra collezione">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Estensioni Celeste</legend>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="historical_period">Periodo storico</label>
+                            <select id="historical_period" name="historical_period" class="form-input">
+                                <option value="">— Seleziona —</option>
+                                {% set current_period = site.cultural_metadata.historical_period if site.cultural_metadata else '' %}
+                                <option value="pre-internet" {% if current_period == 'pre-internet' %}selected{% endif %}>Pre-internet</option>
+                                <option value="anni 80" {% if current_period == 'anni 80' %}selected{% endif %}>Anni '80</option>
+                                <option value="anni 90" {% if current_period == 'anni 90' %}selected{% endif %}>Anni '90</option>
+                                <option value="2000-2010" {% if current_period == '2000-2010' %}selected{% endif %}>2000-2010</option>
+                                <option value="2010-2020" {% if current_period == '2010-2020' %}selected{% endif %}>2010-2020</option>
+                                <option value="post-2020" {% if current_period == 'post-2020' %}selected{% endif %}>Post 2020</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cultural_movement">Movimento culturale</label>
+                            <input type="text" id="cultural_movement" name="cultural_movement" value="{{ site.cultural_metadata.cultural_movement if site.cultural_metadata else '' }}" class="form-input" placeholder="es. cyberpunk, autonomia, punk">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="original_format">Formato originale</label>
+                            <input type="text" id="original_format" name="original_format" value="{{ site.cultural_metadata.original_format if site.cultural_metadata else '' }}" class="form-input" placeholder="es. VHS, BBS, zine cartacea">
+                        </div>
+                        <div class="form-group">
+                            <label for="provenance">Provenienza</label>
+                            <input type="text" id="provenance" name="provenance" value="{{ site.cultural_metadata.provenance if site.cultural_metadata else '' }}" class="form-input" placeholder="es. Archivio Primo Moroni">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="risk_level">Rischio scomparsa</label>
+                            <select id="risk_level" name="risk_level" class="form-input">
+                                <option value="">— Seleziona —</option>
+                                {% set current_risk = site.cultural_metadata.risk_level if site.cultural_metadata else '' %}
+                                <option value="high" {% if current_risk == 'high' %}selected{% endif %}>Alto</option>
+                                <option value="medium" {% if current_risk == 'medium' %}selected{% endif %}>Medio</option>
+                                <option value="low" {% if current_risk == 'low' %}selected{% endif %}>Basso</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="risk_notes">Note sul rischio</label>
+                        <textarea id="risk_notes" name="risk_notes" rows="2" class="form-input" placeholder="Perche questo contenuto rischia di scomparire?">{{ site.cultural_metadata.risk_notes if site.cultural_metadata else '' }}</textarea>
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="btn btn-primary">Salva metadati culturali</button>
+            </form>
+        </details>
+    </section>
+
     <section class="detail-panel">
         <h2>Cronologia crawl</h2>
         {% if logs %}

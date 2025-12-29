@@ -1,0 +1,25 @@
+{% extends "embed/base.html" %}
+
+{% block title %}Galleria: {{ site.name }} - Speculum{% endblock %}
+
+{% block content %}
+<div class="embed-gallery">
+    <div class="embed-gallery-header">
+        <span class="embed-provider">SPECULUM</span>
+        <h3 class="embed-title">{{ site.name }}</h3>
+        <span class="embed-count">{{ images|length }} immagini</span>
+    </div>
+    <div class="embed-gallery-grid">
+        {% for img in images[:12] %}
+        <a href="{{ url_for('serve_media', file_path=img.path) }}" target="_blank" class="embed-gallery-item">
+            <img src="{{ url_for('serve_media', file_path=img.path) }}" alt="{{ img.name }}" loading="lazy">
+        </a>
+        {% endfor %}
+    </div>
+    {% if images|length > 12 %}
+    <a href="{{ url_for('site_media_gallery', site_id=site.id, _external=True) }}" target="_blank" class="embed-gallery-more">
+        Vedi tutte le {{ images|length }} immagini
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

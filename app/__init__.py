@@ -1,15 +1,29 @@
 import os
 import re
+import json
 import secrets
 import logging
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory, abort, session, g, Response
 from markupsafe import escape as html_escape
 from urllib.parse import urlparse, quote as url_quote
+
+
+def is_safe_url(target, host):
+    """Check if URL is safe for redirect (same host, http/https only)."""
+    if not target:
+        return False
+    ref_url = urlparse(f"http://{host}")
+    test_url = urlparse(target)
+    # Allow relative URLs or same-host URLs with http/https
+    if not test_url.scheme and not test_url.netloc:
+        return True  # Relative URL
+    return test_url.scheme in ('http', 'https') and test_url.netloc == ref_url.netloc
 from datetime import datetime, timedelta
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_cors import CORS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +32,7 @@ logger = logging.getLogger(__name__)
 # Initialize extensions
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
+cors = CORS()
 
 
 def create_app():
@@ -59,6 +74,8 @@ def create_app():
     db.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+    # CORS for public API routes only
+    cors.init_app(app, resources={r"/api/*": {"origins": "*"}, r"/oembed": {"origins": "*"}})
 
     with app.app_context():
         db.create_all()
@@ -71,11 +88,24 @@ def create_app():
             # Sites table migrations
             if 'sites' in inspector.get_table_names():
                 columns = [c['name'] for c in inspector.get_columns('sites')]
-                if 'crawl_method' not in columns:
-                    with db.engine.connect() as conn:
+                with db.engine.connect() as conn:
+                    if 'crawl_method' not in columns:
                         conn.execute(text("ALTER TABLE sites ADD COLUMN crawl_method VARCHAR(20) DEFAULT 'wget'"))
-                        conn.commit()
-                    app.logger.info("Added crawl_method column to sites table")
+                        app.logger.info("Added crawl_method column to sites table")
+                    # Wayback Machine fields
+                    if 'wayback_job_id' not in columns:
+                        conn.execute(text("ALTER TABLE sites ADD COLUMN wayback_job_id VARCHAR(100)"))
+                        app.logger.info("Added wayback_job_id column to sites table")
+                    if 'wayback_url' not in columns:
+                        conn.execute(text("ALTER TABLE sites ADD COLUMN wayback_url VARCHAR(500)"))
+                        app.logger.info("Added wayback_url column to sites table")
+                    if 'wayback_saved_at' not in columns:
+                        conn.execute(text("ALTER TABLE sites ADD COLUMN wayback_saved_at DATETIME"))
+                        app.logger.info("Added wayback_saved_at column to sites table")
+                    if 'wayback_status' not in columns:
+                        conn.execute(text("ALTER TABLE sites ADD COLUMN wayback_status VARCHAR(20)"))
+                        app.logger.info("Added wayback_status column to sites table")
+                    conn.commit()
 
             # Users table migrations
             if 'users' in inspector.get_table_names():
@@ -88,11 +118,37 @@ def create_app():
                         conn.execute(text("ALTER TABLE users ADD COLUMN last_login DATETIME"))
                         app.logger.info("Added last_login column to users table")
                     conn.commit()
+
+            # MirrorRequest table migrations
+            if 'mirror_requests' in inspector.get_table_names():
+                mr_columns = [c['name'] for c in inspector.get_columns('mirror_requests')]
+                with db.engine.connect() as conn:
+                    if 'reviewed_at' not in mr_columns:
+                        conn.execute(text("ALTER TABLE mirror_requests ADD COLUMN reviewed_at DATETIME"))
+                        app.logger.info("Added reviewed_at column to mirror_requests table")
+                    if 'admin_notes' not in mr_columns:
+                        conn.execute(text("ALTER TABLE mirror_requests ADD COLUMN admin_notes TEXT"))
+                        app.logger.info("Added admin_notes column to mirror_requests table")
+                    conn.commit()
+
+            # Create cultural_metadata table if it doesn't exist
+            if 'cultural_metadata' not in inspector.get_table_names():
+                from app.models import CulturalMetadata
+                CulturalMetadata.__table__.create(db.engine)
+                app.logger.info("Created cultural_metadata table")
+
+            # Initialize FTS5 tables for full-text search
+            try:
+                from app.search import init_fts_tables
+                init_fts_tables(db)
+            except Exception as fts_err:
+                app.logger.warning(f"FTS5 initialization failed: {fts_err}")
+
         except Exception as e:
             app.logger.warning(f"Migration check failed: {e}")
     
     # Import models and utilities
-    from app.models import Site, Category, CrawlLog, Video, User, MirrorRequest
+    from app.models import Site, Category, CrawlLog, Video, User, MirrorRequest, CulturalMetadata
     from app.crawler import (
         start_crawl, delete_mirror, get_mirror_path, is_youtube_url, MIRRORS_BASE_PATH,
         stop_crawl, get_active_crawls, get_crawl_live_log, get_crawl_progress
@@ -227,11 +283,8 @@ def create_app():
 
                 next_url = request.args.get('next')
                 # Security: validate redirect URL to prevent open redirect
-                if next_url:
-                    parsed = urlparse(next_url)
-                    # Only allow relative URLs without scheme/netloc (prevents //evil.com)
-                    if not parsed.netloc and not parsed.scheme and next_url.startswith('/') and not next_url.startswith('//'):
-                        return redirect(next_url)
+                if next_url and is_safe_url(next_url, request.host):
+                    return redirect(next_url)
                 return redirect(url_for('index'))
             else:
                 error = 'Credenziali non valide'
@@ -424,10 +477,16 @@ def create_app():
         return redirect(url_for('admin_mirror_requests'))
 
     # ==================== WEB ROUTES ====================
-    
+
     @app.route('/')
     def index():
-        """Main catalog page"""
+        """Landing page with gallery and mission"""
+        stats = get_dashboard_stats(db, Site, Video)
+        return render_template('landing.html', stats=stats)
+
+    @app.route('/catalog')
+    def catalog():
+        """Main catalog page with all sites"""
         categories = get_categories_ordered(Category)
         uncategorized_sites = Site.query.filter_by(category_id=None).order_by(Site.name).all()
         stats = get_dashboard_stats(db, Site, Video)
@@ -437,6 +496,21 @@ def create_app():
                                categories=categories,
                                uncategorized_sites=uncategorized_sites,
                                stats=stats)
+
+    @app.route('/about')
+    def about():
+        """About page"""
+        return render_template('about.html')
+
+    @app.route('/privacy')
+    def privacy():
+        """Privacy policy page"""
+        return render_template('privacy.html')
+
+    @app.route('/contact')
+    def contact():
+        """Contact page"""
+        return render_template('contact.html')
     
     @app.route('/sites')
     def sites_list():
@@ -462,7 +536,7 @@ def create_app():
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
             category_id = request.form.get('category_id')
-            depth = int(request.form.get('depth', 1))
+            depth = int(request.form.get('depth', 0))
             crawl_interval = int(request.form.get('crawl_interval', 30))
             include_external = request.form.get('include_external') == 'on'
             use_ai = request.form.get('use_ai') == 'on'
@@ -609,7 +683,7 @@ def create_app():
                         description=description,
                         category_id=int(site_category_id) if site_category_id else None,
                         site_type=site_type,
-                        depth=1,  # First level only by default
+                        depth=0,  # Unlimited depth by default
                         include_external=include_external,
                         crawl_interval_days=crawl_interval,
                         status='pending'
@@ -1198,6 +1272,68 @@ def create_app():
         active = get_active_crawls()
         return jsonify({'stats': stats, 'active': active})
 
+    @app.route('/api/random-media')
+    def api_random_media():
+        """API: Get random images from mirrored sites for gallery display"""
+        import random
+
+        count = min(int(request.args.get('count', 12)), 50)  # Max 50 images
+        image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+
+        all_images = []
+
+        # Scan mirrors directory for images
+        if os.path.exists(MIRRORS_PATH):
+            for domain in os.listdir(MIRRORS_PATH):
+                domain_path = os.path.join(MIRRORS_PATH, domain)
+                if not os.path.isdir(domain_path) or domain == 'youtube':
+                    continue
+
+                # Find site in database for metadata
+                site = Site.query.filter(Site.url.contains(domain)).first()
+                if not site or site.status != 'ready':
+                    continue
+
+                # Walk the mirror directory
+                for root, dirs, files in os.walk(domain_path):
+                    # Skip _speculum directory
+                    if '_speculum' in root:
+                        continue
+                    # Limit depth to avoid very deep crawls
+                    depth = root[len(domain_path):].count(os.sep)
+                    if depth > 5:
+                        continue
+
+                    for f in files:
+                        if f.lower().endswith(image_extensions):
+                            full_path = os.path.join(root, f)
+                            # Skip very small images (likely icons)
+                            try:
+                                size = os.path.getsize(full_path)
+                                if size < 5000:  # Skip images under 5KB
+                                    continue
+                            except (OSError, IOError):
+                                continue
+
+                            rel_path = os.path.relpath(full_path, MIRRORS_PATH)
+                            all_images.append({
+                                'path': f'/media/{rel_path}',
+                                'filename': f,
+                                'site_name': site.name,
+                                'site_id': site.id,
+                                'domain': domain
+                            })
+
+        # Shuffle and limit
+        random.shuffle(all_images)
+        selected = all_images[:count]
+
+        return jsonify({
+            'count': len(selected),
+            'total_available': len(all_images),
+            'images': selected
+        })
+
     @app.route('/api/sites/<int:site_id>/generate-metadata', methods=['POST'])
     @edit_required
     def api_generate_metadata(site_id):
@@ -1381,6 +1517,453 @@ def create_app():
             return jsonify(response.json())
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+    # ==================== SEARCH API ====================
+
+    @app.route('/api/search')
+    def api_search():
+        """API: Full-text search across sites and videos"""
+        from app.search import search
+
+        query = request.args.get('q', '').strip()
+        if not query:
+            return jsonify({'error': 'Query parameter "q" is required'}), 400
+
+        limit = min(int(request.args.get('limit', 20)), 100)
+        site_type = request.args.get('type')  # 'website' or 'youtube'
+
+        results = search(query, limit=limit, site_type=site_type)
+        return jsonify({
+            'query': query,
+            'count': len(results),
+            'results': results
+        })
+
+    @app.route('/search')
+    def search_page():
+        """Search page UI"""
+        query = request.args.get('q', '').strip()
+        results = []
+
+        if query:
+            from app.search import search
+            results = search(query, limit=50)
+
+        return render_template('search.html', query=query, results=results)
+
+    # ==================== CULTURAL METADATA API ====================
+
+    @app.route('/api/sites/<int:site_id>/cultural-metadata')
+    def api_get_cultural_metadata(site_id):
+        """API: Get cultural metadata for a site"""
+        site = Site.query.get_or_404(site_id)
+
+        if site.cultural_metadata:
+            return jsonify(site.cultural_metadata.to_dict())
+        return jsonify({})
+
+    @app.route('/api/sites/<int:site_id>/cultural-metadata', methods=['PUT'])
+    @csrf.exempt  # Allow API calls without CSRF
+    @edit_required
+    def api_update_cultural_metadata(site_id):
+        """API: Update cultural metadata for a site"""
+        site = Site.query.get_or_404(site_id)
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'JSON body required'}), 400
+
+        # Get or create cultural metadata
+        if not site.cultural_metadata:
+            metadata = CulturalMetadata(site_id=site.id)
+            db.session.add(metadata)
+        else:
+            metadata = site.cultural_metadata
+
+        # Update fields
+        allowed_fields = [
+            'dc_title', 'dc_creator', 'dc_date', 'dc_description', 'dc_subject',
+            'dc_type', 'dc_language', 'dc_rights', 'dc_source',
+            'historical_period', 'cultural_movement', 'original_format',
+            'provenance', 'risk_level', 'risk_notes'
+        ]
+
+        for field in allowed_fields:
+            if field in data:
+                setattr(metadata, field, data[field])
+
+        db.session.commit()
+        return jsonify(metadata.to_dict())
+
+    @app.route('/sites/<int:site_id>/cultural-metadata', methods=['POST'])
+    @edit_required
+    def update_cultural_metadata_form(site_id):
+        """Form handler: Update cultural metadata"""
+        site = Site.query.get_or_404(site_id)
+
+        # Get or create cultural metadata
+        if not site.cultural_metadata:
+            metadata = CulturalMetadata(site_id=site.id)
+            db.session.add(metadata)
+        else:
+            metadata = site.cultural_metadata
+
+        # Update from form
+        metadata.dc_title = request.form.get('dc_title')
+        metadata.dc_creator = request.form.get('dc_creator')
+        metadata.dc_date = request.form.get('dc_date')
+        metadata.dc_description = request.form.get('dc_description')
+        metadata.dc_subject = request.form.get('dc_subject')
+        metadata.dc_type = request.form.get('dc_type')
+        metadata.dc_language = request.form.get('dc_language', 'it')
+        metadata.dc_rights = request.form.get('dc_rights')
+        metadata.dc_source = request.form.get('dc_source')
+        metadata.historical_period = request.form.get('historical_period')
+        metadata.cultural_movement = request.form.get('cultural_movement')
+        metadata.original_format = request.form.get('original_format')
+        metadata.provenance = request.form.get('provenance')
+        metadata.risk_level = request.form.get('risk_level')
+        metadata.risk_notes = request.form.get('risk_notes')
+
+        db.session.commit()
+        return redirect(url_for('site_detail', site_id=site_id))
+
+    # ==================== EXPORT API ====================
+
+    @app.route('/api/export/ghost')
+    @edit_required
+    def api_export_ghost():
+        """API: Export sites to Ghost CMS format"""
+        from app.export import GhostExporter
+
+        base_url = request.host_url.rstrip('/')
+        exporter = GhostExporter(base_url=base_url)
+
+        site_type = request.args.get('type')
+        category_id = request.args.get('category_id', type=int)
+
+        data = exporter.export_all(site_type=site_type, category_id=category_id)
+
+        response = Response(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            mimetype='application/json',
+            headers={'Content-Disposition': 'attachment; filename=speculum_ghost_export.json'}
+        )
+        return response
+
+    @app.route('/api/export/sites')
+    @edit_required
+    def api_export_sites():
+        """Export sites list in various formats for backup/restore"""
+        format_type = request.args.get('format', 'json')
+        include_settings = request.args.get('settings', 'true').lower() == 'true'
+
+        sites = Site.query.all()
+
+        if format_type == 'txt':
+            # Simple URL list for bulk import
+            urls = [site.url for site in sites]
+            content = '\n'.join(urls)
+            return Response(
+                content,
+                mimetype='text/plain',
+                headers={'Content-Disposition': 'attachment; filename=speculum_sites.txt'}
+            )
+
+        elif format_type == 'csv':
+            # CSV format with more details
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['url', 'name', 'description', 'category', 'site_type', 'crawl_method',
+                           'crawl_interval_days', 'depth', 'include_external', 'status'])
+            for site in sites:
+                writer.writerow([
+                    site.url,
+                    site.name,
+                    site.description or '',
+                    site.category.name if site.category else '',
+                    site.site_type,
+                    site.crawl_method,
+                    site.crawl_interval_days,
+                    site.depth,
+                    site.include_external,
+                    site.status
+                ])
+            content = output.getvalue()
+            return Response(
+                content,
+                mimetype='text/csv',
+                headers={'Content-Disposition': 'attachment; filename=speculum_sites.csv'}
+            )
+
+        else:
+            # Full JSON export with all settings
+            data = {
+                'export_date': datetime.utcnow().isoformat(),
+                'version': '1.0',
+                'site_count': len(sites),
+                'sites': []
+            }
+
+            for site in sites:
+                site_data = {
+                    'url': site.url,
+                    'name': site.name,
+                    'description': site.description,
+                    'site_type': site.site_type,
+                    'status': site.status
+                }
+
+                if include_settings:
+                    site_data.update({
+                        'category': site.category.name if site.category else None,
+                        'crawl_method': site.crawl_method,
+                        'crawl_interval_days': site.crawl_interval_days,
+                        'depth': site.depth,
+                        'include_external': site.include_external,
+                        'created_at': site.created_at.isoformat() if site.created_at else None,
+                        'last_crawl': site.last_crawl.isoformat() if site.last_crawl else None,
+                        'page_count': site.page_count,
+                        'size_bytes': site.size_bytes
+                    })
+
+                data['sites'].append(site_data)
+
+            return Response(
+                json.dumps(data, indent=2, ensure_ascii=False),
+                mimetype='application/json',
+                headers={'Content-Disposition': 'attachment; filename=speculum_sites_backup.json'}
+            )
+
+    @app.route('/api/import/sites', methods=['POST'])
+    @csrf.exempt
+    @edit_required
+    def api_import_sites():
+        """Import sites from JSON backup"""
+        if not request.is_json:
+            return jsonify({'error': 'JSON data required'}), 400
+
+        data = request.get_json()
+        if 'sites' not in data:
+            return jsonify({'error': 'Invalid format: sites array required'}), 400
+
+        imported = 0
+        skipped = 0
+        errors = []
+
+        for site_data in data['sites']:
+            url = site_data.get('url')
+            if not url:
+                errors.append('Missing URL in site entry')
+                continue
+
+            # Check if site already exists
+            existing = Site.query.filter_by(url=url).first()
+            if existing:
+                skipped += 1
+                continue
+
+            try:
+                # Find or create category
+                category_id = None
+                if site_data.get('category'):
+                    cat = Category.query.filter_by(name=site_data['category']).first()
+                    if cat:
+                        category_id = cat.id
+
+                site = Site(
+                    url=url,
+                    name=site_data.get('name', url),
+                    description=site_data.get('description'),
+                    site_type=site_data.get('site_type', 'website'),
+                    category_id=category_id,
+                    crawl_method=site_data.get('crawl_method', 'wget'),
+                    crawl_interval_days=site_data.get('crawl_interval_days', 30),
+                    depth=site_data.get('depth', 2),
+                    include_external=site_data.get('include_external', False),
+                    status='pending'
+                )
+                db.session.add(site)
+                imported += 1
+            except Exception as e:
+                errors.append(f'{url}: {str(e)}')
+
+        db.session.commit()
+
+        return jsonify({
+            'imported': imported,
+            'skipped': skipped,
+            'errors': errors
+        })
+
+    @app.route('/admin/export')
+    @edit_required
+    def admin_export():
+        """Export page UI"""
+        categories = Category.query.all()
+        site_count = Site.query.filter_by(status='ready').count()
+        total_sites = Site.query.count()
+        return render_template('admin_export.html', categories=categories, site_count=site_count, total_sites=total_sites)
+
+    # ==================== BACKUP API ====================
+
+    @app.route('/api/backup/requests')
+    @admin_required
+    def api_backup_requests():
+        """API: Download MirrorRequest backup"""
+        from app.backup import export_requests_json
+        import json as json_module
+
+        filepath = export_requests_json()
+        if filepath:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json_module.load(f)
+
+            response = Response(
+                json_module.dumps(data, indent=2, ensure_ascii=False),
+                mimetype='application/json',
+                headers={'Content-Disposition': f'attachment; filename={filepath.name}'}
+            )
+            return response
+        return jsonify({'error': 'Backup failed'}), 500
+
+    @app.route('/api/backup/list')
+    @admin_required
+    def api_backup_list():
+        """API: List available backups"""
+        from app.backup import list_backups
+        return jsonify(list_backups())
+
+    @app.route('/admin/backup')
+    @admin_required
+    def admin_backup():
+        """Backup management page"""
+        from app.backup import list_backups
+        from app.models import MirrorRequest
+
+        backups = list_backups()
+        request_count = MirrorRequest.query.count()
+        return render_template('admin_backup.html', backups=backups, request_count=request_count)
+
+    # ==================== WAYBACK MANUAL SAVE ====================
+
+    @app.route('/api/sites/<int:site_id>/wayback-save', methods=['POST'])
+    @csrf.exempt
+    @edit_required
+    def api_wayback_save(site_id):
+        """API: Manually trigger Wayback Machine save"""
+        from app.wayback import save_site_to_wayback
+
+        site = Site.query.get_or_404(site_id)
+
+        if save_site_to_wayback(site_id):
+            return jsonify({
+                'status': 'pending',
+                'message': f'Wayback save initiated for {site.url}'
+            })
+        return jsonify({'error': 'Wayback save failed'}), 500
+
+    # ==================== OEMBED PROVIDER ====================
+
+    @app.route('/oembed')
+    def oembed_endpoint():
+        """oEmbed provider endpoint for Ghost CMS and other consumers"""
+        from app.oembed import OEmbedProvider
+
+        url = request.args.get('url')
+        if not url:
+            return jsonify({'error': 'URL parameter required'}), 400
+
+        format_type = request.args.get('format', 'json')
+        if format_type != 'json':
+            return jsonify({'error': 'Only JSON format supported'}), 501
+
+        maxwidth = request.args.get('maxwidth', 600, type=int)
+        maxheight = request.args.get('maxheight', 400, type=int)
+
+        provider = OEmbedProvider(request.host_url.rstrip('/'))
+        response = provider.get_oembed_response(url, maxwidth, maxheight)
+
+        if response is None:
+            return jsonify({'error': 'URL not supported for embedding'}), 404
+
+        return jsonify(response)
+
+    # ==================== EMBED VIEWS ====================
+
+    @app.route('/embed/site/<int:site_id>')
+    def embed_site(site_id):
+        """Embeddable site card view for iframes"""
+        site = Site.query.get_or_404(site_id)
+        return render_template('embed/site.html', site=site)
+
+    @app.route('/embed/video/<int:video_id>')
+    def embed_video(video_id):
+        """Embeddable video player view"""
+        video = Video.query.get_or_404(video_id)
+
+        # Find the video file
+        video_filename = None
+        if video.site and video.site.channel_id:
+            video_path = os.path.join(MIRRORS_BASE_PATH, 'youtube', video.site.channel_id, video.video_id)
+            if os.path.exists(video_path):
+                for f in os.listdir(video_path):
+                    if f.endswith('.mp4'):
+                        video_filename = f
+                        break
+
+        return render_template('embed/video.html', video=video, video_filename=video_filename)
+
+    @app.route('/embed/gallery/<int:site_id>')
+    def embed_gallery(site_id):
+        """Embeddable media gallery view"""
+        site = Site.query.get_or_404(site_id)
+
+        # Get mirror path and find images
+        from app.crawler import get_mirror_path
+        mirror_path = get_mirror_path(site.url)
+
+        images = []
+        image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+
+        if os.path.exists(mirror_path):
+            for root, dirs, files in os.walk(mirror_path):
+                if '_speculum' in root:
+                    continue
+                for f in files:
+                    if f.lower().endswith(image_extensions):
+                        full_path = os.path.join(root, f)
+                        rel_path = os.path.relpath(full_path, MIRRORS_BASE_PATH)
+                        images.append({
+                            'name': f,
+                            'path': rel_path
+                        })
+
+        return render_template('embed/gallery.html', site=site, images=images[:50])
+
+    @app.route('/embed/mirror/<path:site_path>')
+    def embed_mirror(site_path):
+        """Embeddable mirror iframe view"""
+        parts = site_path.split('/', 1)
+        domain = parts[0]
+        path = site_path
+
+        return render_template('embed/mirror.html', domain=domain, path=path)
+
+    @app.route('/embed/search')
+    def embed_search():
+        """Embeddable search results view"""
+        from app.search import search
+
+        query = request.args.get('q', '').strip()
+        results = []
+
+        if query:
+            results = search(query, limit=20)
+
+        return render_template('embed/search.html', query=query, results=results)
 
     return app
 

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Richieste - Speculum{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Backup Richieste Mirror</h1>
+    <p>Gestione backup delle richieste di mirroring</p>
+</div>
+
+<div class="backup-info">
+    <div class="info-card">
+        <h3>{{ request_count }}</h3>
+        <p>Richieste totali nel database</p>
+    </div>
+    <div class="info-card">
+        <h3>{{ backups|length }}</h3>
+        <p>Backup disponibili</p>
+    </div>
+</div>
+
+<div class="backup-actions">
+    <h2>Azioni</h2>
+    <a href="{{ url_for('api_backup_requests') }}" class="btn btn-primary">
+        Scarica Backup Completo
+    </a>
+    <p class="action-note">Il backup viene eseguito automaticamente ogni 6 ore. Vengono mantenuti gli ultimi 30 backup.</p>
+</div>
+
+{% if backups %}
+<div class="backup-list">
+    <h2>Backup Disponibili</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Nome File</th>
+                <th>Data Creazione</th>
+                <th>Richieste</th>
+                <th>Dimensione</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for backup in backups %}
+            <tr>
+                <td>{{ backup.filename }}</td>
+                <td>{{ backup.created_at[:16].replace('T', ' ') }}</td>
+                <td>{{ backup.count if backup.count else '-' }}</td>
+                <td>{{ backup.size_human }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="no-backups">
+    <p>Nessun backup disponibile. Scarica un backup per crearne uno.</p>
+</div>
+{% endif %}
+
+<div class="admin-links">
+    <h3>Altre Funzioni Admin</h3>
+    <a href="{{ url_for('admin_export') }}" class="btn btn-secondary">Export Ghost</a>
+    <a href="{{ url_for('admin_mirror_requests') }}" class="btn btn-secondary">Richieste Mirror</a>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Gestione Utenti</a>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.backup-info {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.info-card {
+    padding: 1.5rem;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    text-align: center;
+    min-width: 150px;
+}
+.info-card h3 {
+    font-size: 2rem;
+    margin: 0;
+    color: var(--accent-color, #007bff);
+}
+.info-card p {
+    margin: 0.5rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+.backup-actions {
+    background: var(--card-bg, #fff);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    margin-bottom: 2rem;
+}
+.backup-actions h2 {
+    margin-top: 0;
+}
+.action-note {
+    margin-top: 1rem;
+    color: var(--text-muted, #666);
+    font-size: 0.9rem;
+}
+.backup-list {
+    margin-bottom: 2rem;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+.data-table th {
+    background: var(--table-header-bg, #f5f5f5);
+    font-weight: 600;
+}
+.data-table tr:hover {
+    background: var(--table-hover-bg, #f9f9f9);
+}
+.no-backups {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted, #666);
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+}
+.admin-links {
+    margin-top: 2rem;
+}
+.admin-links h3 {
+    margin-bottom: 1rem;
+}
+.admin-links .btn {
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}

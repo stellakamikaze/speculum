@@ -2,6 +2,12 @@
 
 {% block title %}{{ video.title }} — Speculum{% endblock %}
 
+{% block oembed_discovery %}
+<link rel="alternate" type="application/json+oembed"
+      href="{{ url_for('oembed_endpoint', url=request.url, _external=True) }}"
+      title="{{ video.title }}">
+{% endblock %}
+
 {% block content %}
 <div class="video-player-container">
     <div class="video-wrapper">

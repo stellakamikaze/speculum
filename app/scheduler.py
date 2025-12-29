@@ -83,6 +83,40 @@ def reset_stuck_crawls():
             logger.info(f"Reset {len(stuck_sites)} stuck crawls")
 
 
+def backup_mirror_requests():
+    """Backup MirrorRequest records to JSON file"""
+    from app import create_app
+
+    app = create_app()
+
+    with app.app_context():
+        try:
+            from app.backup import export_requests_json
+            filepath = export_requests_json()
+            if filepath:
+                logger.info(f"MirrorRequest backup created: {filepath}")
+            else:
+                logger.warning("MirrorRequest backup failed")
+        except Exception as e:
+            logger.error(f"MirrorRequest backup error: {e}")
+
+
+def check_wayback_jobs():
+    """Check status of pending Wayback Machine save jobs"""
+    from app import create_app
+
+    app = create_app()
+
+    with app.app_context():
+        try:
+            from app.wayback import check_pending_wayback_jobs
+            checked, succeeded, failed = check_pending_wayback_jobs()
+            if checked > 0:
+                logger.info(f"Wayback job check: {succeeded} succeeded, {failed} failed out of {checked}")
+        except Exception as e:
+            logger.error(f"Wayback job check error: {e}")
+
+
 def init_scheduler(app):
     """Initialize the scheduler with the Flask app"""
     if not scheduler.running:
@@ -110,8 +144,24 @@ def init_scheduler(app):
             replace_existing=True
         )
 
+        # Backup MirrorRequest every 6 hours
+        scheduler.add_job(
+            backup_mirror_requests,
+            IntervalTrigger(hours=6),
+            id='backup_mirror_requests',
+            replace_existing=True
+        )
+
+        # Check Wayback Machine job status every 30 minutes
+        scheduler.add_job(
+            check_wayback_jobs,
+            IntervalTrigger(minutes=30),
+            id='check_wayback_jobs',
+            replace_existing=True
+        )
+
         scheduler.start()
-        logger.info("Scheduler started with retry queue and stuck crawl detection")
+        logger.info("Scheduler started with retry queue, stuck crawl detection, backup, and Wayback checks")
 
 
 def shutdown_scheduler():
