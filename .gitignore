@@ -1,5 +1,6 @@
 # Database e dati persistenti
 data/
+instance/
 ollama_data/
 mirrors/
 
