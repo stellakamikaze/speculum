@@ -1,0 +1,49 @@
+# Lightweight docker-compose without Ollama
+# Use this for faster testing or on systems with limited resources
+#
+# Usage: docker compose -f docker-compose.light.yml up -d --build
+
+version: '3.8'
+
+services:
+  speculum:
+    build: .
+    container_name: speculum
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5050}:5000"
+    environment:
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      # Database
+      - DATABASE_URL=sqlite:////app/instance/speculum.db
+      - MIRRORS_PATH=/mirrors
+      # Disable Ollama
+      - OLLAMA_URL=
+      # Environment
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - RATE_LIMIT=${RATE_LIMIT:-60}
+    volumes:
+      - speculum_data:/app/instance
+      - speculum_mirrors:/mirrors
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - speculum-net
+
+volumes:
+  speculum_data:
+    name: speculum_data
+  speculum_mirrors:
+    name: speculum_mirrors
+
+networks:
+  speculum-net:
+    driver: bridge
+    name: speculum-net

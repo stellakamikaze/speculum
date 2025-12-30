@@ -29,4 +29,6 @@ Thumbs.db
 # Logs
 *.log
 data_backup_*/
-docker-compose.yml
+
+# Local environment (not docker-compose files)
+.env.local

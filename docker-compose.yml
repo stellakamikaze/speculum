@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  speculum:
+    build: .
+    container_name: speculum
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5050}:5000"
+    environment:
+      # Security keys - auto-generated for dev, set in production
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      # Admin credentials
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      # Database
+      - DATABASE_URL=sqlite:////app/instance/speculum.db
+      - MIRRORS_PATH=/mirrors
+      # Ollama AI (optional)
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-tinyllama}
+      # Environment: development or production
+      - FLASK_ENV=${FLASK_ENV:-development}
+      # Telegram notifications (optional)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # Rate limiting
+      - RATE_LIMIT=${RATE_LIMIT:-60}
+    volumes:
+      - speculum_data:/app/instance
+      - speculum_mirrors:/mirrors
+    depends_on:
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - speculum-net
+
+  # Ollama for AI metadata (optional - can be removed for lighter testing)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: speculum-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - speculum-net
+    # Optional: expose Ollama API
+    # ports:
+    #   - "11434:11434"
+
+volumes:
+  speculum_data:
+    name: speculum_data
+  speculum_mirrors:
+    name: speculum_mirrors
+  ollama_data:
+    name: speculum_ollama_data
+
+networks:
+  speculum-net:
+    driver: bridge
+    name: speculum-net
