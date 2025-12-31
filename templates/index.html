@@ -3,18 +3,18 @@
 {% block title %}Speculum — Web Archive{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
+<!-- Hero Section - Swiss/Brutalist Style -->
 <section class="hero">
-    <div class="hero-content">
-        <h1 class="hero-title">SPECULUM</h1>
-        <p class="hero-tagline">Preserving the web, one site at a time</p>
-        <div class="hero-rule">
-            <span class="rule-square"></span>
-        </div>
-        <div class="hero-actions">
-            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Request an Archive</a>
-            <a href="{{ url_for('catalog') }}" class="btn btn-secondary btn-large">Browse Catalog</a>
-        </div>
+    <div class="hero-badge">Now Available</div>
+    <h1 class="hero-title">Preserving the web,<br>one site at a time</h1>
+    <div class="hero-rule"></div>
+    <p class="hero-tagline">
+        Speculum archives websites and YouTube channels at risk of disappearing,
+        creating permanent mirrors for future generations.
+    </p>
+    <div class="hero-actions">
+        <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Request Archive</a>
+        <a href="{{ url_for('catalog') }}" class="btn btn-secondary btn-large">Browse Catalog</a>
     </div>
 </section>
 
@@ -34,8 +34,8 @@
             <span class="stat-label">Videos Saved</span>
         </div>
         <div class="stat-item">
-            <span class="stat-number">{{ "%.1f"|format(stats.total_size / 1073741824) }} GB</span>
-            <span class="stat-label">Total Size</span>
+            <span class="stat-number">{{ "%.1f"|format(stats.total_size / 1073741824) }}</span>
+            <span class="stat-label">GB Archived</span>
         </div>
     </div>
 </section>
@@ -45,7 +45,7 @@
 <section class="featured-section">
     <div class="section-header">
         <h2 class="section-title">Featured Archives</h2>
-        <a href="{{ url_for('catalog') }}" class="section-link">View all &rarr;</a>
+        <a href="{{ url_for('catalog') }}" class="section-link">View All</a>
     </div>
     <div class="sites-gallery">
         {% for site in featured_sites %}
@@ -62,10 +62,10 @@
             {% endif %}
             <div class="card-meta">
                 {% if site.category %}
-                <span class="meta-category">{{ site.category.name }}</span>
+                <span>{{ site.category.name }}</span>
                 {% endif %}
                 {% if site.status == 'ready' %}
-                <span class="meta-size">{{ site._human_size(site.size_bytes) }}</span>
+                <span>{{ site._human_size(site.size_bytes) }}</span>
                 {% endif %}
             </div>
             <div class="card-actions">
@@ -104,7 +104,7 @@
 {% endif %}
 
 <!-- CTA Section (Inverted) -->
-<section class="cta-section inverted">
+<section class="cta-section">
     <h2 class="cta-title">Have a site worth preserving?</h2>
     <p class="cta-text">Submit a request and we'll archive it for posterity.</p>
     <a href="{{ url_for('request_mirror') }}" class="btn btn-inverted btn-large">Request Archive</a>
