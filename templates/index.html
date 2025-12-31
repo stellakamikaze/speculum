@@ -3,88 +3,86 @@
 {% block title %}Speculum — Web Archive{% endblock %}
 
 {% block content %}
-<!-- Hero Section - Swiss/Brutalist Style -->
+<!-- Hero Section -->
 <section class="hero">
-    <div class="hero-badge">Now Available</div>
-    <h1 class="hero-title">Preserving the web,<br>one site at a time</h1>
-    <div class="hero-rule"></div>
+    <div class="hero-label">Web Mirror Archive</div>
+    <h1 class="hero-title">Preserving<br>The Web</h1>
     <p class="hero-tagline">
         Speculum archives websites and YouTube channels at risk of disappearing,
         creating permanent mirrors for future generations.
     </p>
     <div class="hero-actions">
-        <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Request Archive</a>
-        <a href="{{ url_for('catalog') }}" class="btn btn-secondary btn-large">Browse Catalog</a>
+        <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">+ Request Archive</a>
+        <a href="{{ url_for('catalog') }}" class="btn btn-large">Browse Catalog</a>
     </div>
 </section>
 
-<!-- Stats Section (Inverted) -->
-<section class="stats-section inverted">
-    <div class="stats-grid">
+<!-- Stats Box -->
+<div class="stats-box">
+    <div class="stats-grid stats-row">
         <div class="stat-item">
             <span class="stat-number">{{ stats.total_sites }}</span>
-            <span class="stat-label">Sites Archived</span>
+            <span class="stat-label">Sites</span>
         </div>
         <div class="stat-item">
-            <span class="stat-number">{{ stats.ready_sites }}</span>
-            <span class="stat-label">Available Now</span>
+            <span class="stat-number">{{ stats.youtube_channels }}</span>
+            <span class="stat-label">YT Channels</span>
         </div>
         <div class="stat-item">
             <span class="stat-number">{{ stats.total_videos }}</span>
-            <span class="stat-label">Videos Saved</span>
+            <span class="stat-label">Videos</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.ready_sites }}</span>
+            <span class="stat-label">Available</span>
         </div>
         <div class="stat-item">
             <span class="stat-number">{{ "%.1f"|format(stats.total_size / 1073741824) }}</span>
             <span class="stat-label">GB Archived</span>
         </div>
     </div>
-</section>
+</div>
 
 <!-- Featured Sites Section -->
 {% if featured_sites %}
+<div class="section-divider"></div>
+
 <section class="featured-section">
     <div class="section-header">
+        <span class="section-number">01.</span>
         <h2 class="section-title">Featured Archives</h2>
-        <a href="{{ url_for('catalog') }}" class="section-link">View All</a>
+        <a href="{{ url_for('catalog') }}" class="section-count">View All →</a>
     </div>
-    <div class="sites-gallery">
+    <div class="section-line"></div>
+
+    <div class="sites-grid">
         {% for site in featured_sites %}
         <article class="site-card">
-            <div class="card-preview"
-                 hx-get="{{ url_for('api_site_preview_images', site_id=site.id) }}?count=1"
-                 hx-trigger="revealed"
-                 hx-swap="innerHTML">
-                <div class="card-preview-placeholder">—</div>
-            </div>
-            <div class="card-content">
-                <div class="card-header">
-                    <span class="card-type">{% if site.site_type == 'youtube' %}YouTube{% else %}Website{% endif %}</span>
-                    <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
-                </div>
+            <div class="card-header">
                 <h3 class="card-title">
                     <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a>
                 </h3>
-                {% if site.description %}
-                <p class="card-description">{{ site.description[:120] }}{% if site.description|length > 120 %}...{% endif %}</p>
+                <span class="card-badge">{% if site.site_type == 'youtube' %}YT{% else %}Web{% endif %}</span>
+            </div>
+            {% if site.description %}
+            <p class="card-description">{{ site.description[:120] }}{% if site.description|length > 120 %}...{% endif %}</p>
+            {% endif %}
+            <div class="card-stats">
+                {% if site.category %}
+                <span class="card-stat">{{ site.category.name }}</span>
                 {% endif %}
-                <div class="card-meta">
-                    {% if site.category %}
-                    <span>{{ site.category.name }}</span>
-                    {% endif %}
-                    {% if site.status == 'ready' %}
-                    <span>{{ site._human_size(site.size_bytes) }}</span>
-                    {% endif %}
-                </div>
+                <span class="card-stat">{{ site._human_size(site.size_bytes) }}</span>
+                <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
             </div>
             <div class="card-actions">
                 {% if site.status == 'ready' %}
                     {% if site.site_type == 'youtube' %}
-                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary btn-small">Watch</a>
+                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary btn-small">Mirror</a>
                     {% else %}
-                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary btn-small" target="_blank">View</a>
+                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary btn-small" target="_blank">Mirror</a>
                     {% endif %}
                 {% endif %}
-                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-ghost btn-small">Details</a>
+                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-small">Info</a>
             </div>
         </article>
         {% endfor %}
@@ -96,8 +94,10 @@
 {% if media_items %}
 <section class="gallery-section">
     <div class="section-header">
+        <span class="section-number">02.</span>
         <h2 class="section-title">Media Gallery</h2>
     </div>
+    <div class="section-line"></div>
     <div class="media-scroll" id="media-gallery">
         {% for item in media_items %}
         <a href="{{ url_for('site_detail', site_id=item.site_id) }}" class="media-item">
@@ -111,7 +111,7 @@
 </section>
 {% endif %}
 
-<!-- CTA Section (Inverted) -->
+<!-- CTA Section -->
 <section class="cta-section">
     <h2 class="cta-title">Have a site worth preserving?</h2>
     <p class="cta-text">Submit a request and we'll archive it for posterity.</p>

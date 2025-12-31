@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Speculum{% endblock %}</title>
 
-    <!-- Fonts: Inter (Swiss style) -->
+    <!-- Fonts: Inter + Oswald (Bold Display) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -23,7 +23,7 @@
     <nav class="main-nav">
         <div class="nav-brand">
             <a href="{{ url_for('index') }}">SPECULUM</a>
-            <span class="nav-tagline">Preserving the web</span>
+            <span class="nav-tagline">Web Mirror Archive</span>
         </div>
 
         <!-- Hamburger menu for mobile -->
