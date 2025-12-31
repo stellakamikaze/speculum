@@ -291,20 +291,21 @@ Riferimento: [Awesome Web Archiving](https://github.com/iipc/awesome-web-archivi
 
 ## Roadmap Suggerita
 
-### Fase 1: Stabilita (1-2 settimane)
-- [ ] Backup automatico database
+### Fase 1: Stabilita
+- [x] Backup automatico database (`app/backup.py`)
 - [ ] Storage dashboard con alert
-- [ ] Screenshot automatici con Playwright
 - [ ] Health check endpoint migliorato
 
-### Fase 2: Ricerca (2-3 settimane)
-- [ ] Indicizzazione full-text
-- [ ] Ricerca nei contenuti
+### Fase 2: Ricerca
+- [x] Indicizzazione full-text (`app/search.py` - SQLite FTS5)
+- [x] Ricerca nei contenuti
 - [ ] Sistema di tag
 
-### Fase 3: Standard (3-4 settimane)
-- [ ] Export WARC
-- [ ] API REST v1
+### Fase 3: Standard
+- [x] Export Ghost CMS (`app/export.py`)
+- [x] Wayback Machine integration (`app/wayback.py`)
+- [ ] Export WARC (formato ISO)
+- [ ] API REST v1 documentata
 - [ ] RSS feed
 
 ### Fase 4: Scalabilita (ongoing)

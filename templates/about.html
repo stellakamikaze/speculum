@@ -1,77 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Chi Siamo — Speculum{% endblock %}
+{% block title %}About — Speculum{% endblock %}
 
 {% block content %}
-<section class="static-page">
-    <div class="page-header">
-        <span class="section-label">About</span>
-        <h1>Chi Siamo</h1>
-    </div>
+<article class="static-page">
+    <header class="page-header">
+        <h1 class="page-title">About Speculum</h1>
+        <p class="page-subtitle">Digital preservation through local mirroring</p>
+    </header>
 
-    <div class="content-block">
-        <h2>Il Progetto Speculum</h2>
+    <section class="content-section">
+        <h2>The Project</h2>
         <p class="lead">
-            Speculum e un progetto di archiviazione digitale dedicato alla preservazione
-            della memoria culturale italiana, con particolare attenzione alla controcultura,
-            agli spazi indipendenti e ai contenuti a rischio di scomparsa.
+            Speculum is a digital archiving initiative dedicated to preserving
+            online content at risk of disappearing. We mirror websites, YouTube
+            channels, and digital publications for future generations.
         </p>
-
         <p>
-            <!-- PLACEHOLDER: Inserire qui la storia e la descrizione del progetto -->
-            Il nome "Speculum" (specchio in latino) riflette la nostra missione:
-            creare un riflesso fedele del web che sta scomparendo, preservandolo
-            per le generazioni future.
+            The name "Speculum" (mirror in Latin) reflects our mission: creating
+            faithful reflections of the web before it vanishes. Every site we
+            archive becomes a permanent record of digital culture.
         </p>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>Cosa Archiviamo</h2>
+    <section class="content-section">
+        <h2>What We Archive</h2>
         <ul class="feature-list">
-            <li>Siti web storici e blog personali</li>
-            <li>Forum e comunita online</li>
-            <li>Zine digitali e pubblicazioni indipendenti</li>
-            <li>Canali YouTube e contenuti video</li>
-            <li>Documentazione di movimenti culturali</li>
-            <li>Archivi di spazi occupati e centri sociali</li>
+            <li>Personal websites and blogs</li>
+            <li>Independent publications and zines</li>
+            <li>YouTube channels and video content</li>
+            <li>Community forums and archives</li>
+            <li>Cultural documentation</li>
+            <li>Sites at risk of closure</li>
         </ul>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>Tecnologia</h2>
-        <p>
-            Speculum utilizza tecnologie open source per l'archiviazione:
-        </p>
+    <section class="content-section">
+        <h2>Technology</h2>
+        <p>Speculum uses open source tools for archiving:</p>
         <ul class="feature-list">
-            <li><strong>wget</strong> — Per il mirroring completo di siti web</li>
-            <li><strong>yt-dlp</strong> — Per l'archiviazione di video YouTube</li>
-            <li><strong>SingleFile</strong> — Per siti JavaScript-heavy</li>
-            <li><strong>Ollama + TinyLlama</strong> — Per la categorizzazione AI dei contenuti</li>
+            <li><strong>wget</strong> — Complete website mirroring</li>
+            <li><strong>yt-dlp</strong> — YouTube video archiving</li>
+            <li><strong>SingleFile</strong> — JavaScript-heavy sites</li>
+            <li><strong>Ollama</strong> — AI-powered categorization</li>
         </ul>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>Contribuire</h2>
-        <p>
-            Puoi contribuire al progetto in diversi modi:
-        </p>
+    <section class="content-section">
+        <h2>Contribute</h2>
+        <p>You can help preserve the web:</p>
         <ul class="feature-list">
-            <li>Segnalando siti a rischio tramite il modulo di richiesta</li>
-            <li>Contribuendo al codice su GitHub</li>
-            <li>Diffondendo il progetto nella tua comunita</li>
+            <li>Submit sites at risk through our request form</li>
+            <li>Spread the word in your community</li>
         </ul>
-        <div class="action-buttons">
-            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Proponi un Sito</a>
+        <div class="section-actions">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Request an Archive</a>
         </div>
-    </div>
-
-    <div class="content-block">
-        <h2>Contatti</h2>
-        <p>
-            <!-- PLACEHOLDER: Inserire qui i contatti del progetto -->
-            Per informazioni, collaborazioni o segnalazioni, visita la pagina
-            <a href="{{ url_for('contact') }}">Contatti</a>.
-        </p>
-    </div>
-</section>
+    </section>
+</article>
 {% endblock %}

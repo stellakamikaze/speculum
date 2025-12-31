@@ -1,79 +1,66 @@
 {% extends "base.html" %}
 
-{% block title %}Contatti — Speculum{% endblock %}
+{% block title %}Contact — Speculum{% endblock %}
 
 {% block content %}
-<section class="static-page">
-    <div class="page-header">
-        <span class="section-label">Contact</span>
-        <h1>Contatti</h1>
-    </div>
-
-    <div class="content-block">
-        <p class="lead">
-            Hai domande, suggerimenti o vuoi collaborare con il progetto Speculum?
-            Ecco come raggiungerci.
-        </p>
-    </div>
+<article class="static-page">
+    <header class="page-header">
+        <h1 class="page-title">Contact</h1>
+        <p class="page-subtitle">Get in touch with the Speculum team</p>
+    </header>
 
     <div class="contact-grid">
-        <div class="contact-card">
-            <h2>Proponi un Sito</h2>
+        <section class="contact-card">
+            <h2>Archive Requests</h2>
             <p>
-                Conosci un sito web, un blog o un canale YouTube che merita
-                di essere preservato? Usa il nostro modulo di richiesta.
+                Know a website worth preserving? Submit it through our request form.
             </p>
-            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Invia Richiesta</a>
-        </div>
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Request Archive</a>
+        </section>
 
-        <div class="contact-card">
-            <h2>Richieste di Rimozione</h2>
+        <section class="contact-card">
+            <h2>Removal Requests</h2>
             <p>
-                Se sei il proprietario di contenuti archiviati e desideri
-                la rimozione, contattaci specificando l'URL in questione.
+                If you own archived content and wish it removed,
+                contact us with the URL and proof of ownership.
             </p>
-            <!-- PLACEHOLDER: Inserire email o form di contatto -->
             <p class="contact-info">
-                <strong>Email:</strong> <!-- inserire email -->
+                <strong>Email:</strong> [placeholder]
             </p>
-        </div>
+        </section>
 
-        <div class="contact-card">
-            <h2>Collaborazioni</h2>
+        <section class="contact-card">
+            <h2>Collaborations</h2>
             <p>
-                Sei un archivista, un ricercatore o gestisci un progetto simile?
-                Siamo aperti a collaborazioni e scambi di know-how.
+                Archivists, researchers, and similar projects—we welcome
+                collaborations and knowledge exchange.
             </p>
-            <!-- PLACEHOLDER: Inserire contatti per collaborazioni -->
             <p class="contact-info">
-                <strong>Email:</strong> <!-- inserire email -->
+                <strong>Email:</strong> [placeholder]
             </p>
-        </div>
+        </section>
 
-        <div class="contact-card">
-            <h2>Segnalazioni Tecniche</h2>
+        <section class="contact-card">
+            <h2>Technical Issues</h2>
             <p>
-                Hai trovato un bug o vuoi contribuire al codice?
-                Il progetto e open source.
+                Found a bug or want to contribute? The project is open source.
             </p>
-            <!-- PLACEHOLDER: Inserire link GitHub -->
             <p class="contact-info">
-                <strong>GitHub:</strong> <!-- inserire link -->
+                <strong>GitHub:</strong> [placeholder]
             </p>
-        </div>
+        </section>
     </div>
 
-    <div class="content-block">
-        <h2>Note Legali</h2>
+    <section class="content-section">
+        <h2>Legal</h2>
         <p>
-            Per questioni relative alla privacy e al trattamento dei dati personali,
-            consulta la nostra <a href="{{ url_for('privacy') }}">Privacy Policy</a>.
+            For privacy and data protection matters, see our
+            <a href="{{ url_for('privacy') }}">Privacy Policy</a>.
         </p>
         <p>
-            Speculum opera nel rispetto delle leggi sul diritto d'autore.
-            I contenuti archiviati provengono da fonti pubbliche e vengono preservati
-            a scopo di documentazione storica e culturale.
+            Speculum respects copyright law. Archived content comes from public
+            sources and is preserved for historical and cultural documentation.
         </p>
-    </div>
-</section>
+    </section>
+</article>
 {% endblock %}

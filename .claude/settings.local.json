@@ -5,7 +5,29 @@
       "Bash(git commit:*)",
       "Bash(git config:*)",
       "Bash(git push:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(brew install:*)",
+      "Bash(go install:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(bash)",
+      "Bash(git clone:*)",
+      "Bash(chmod:*)",
+      "Bash(~/.local/bin/bd init:*)",
+      "Bash(~/.local/bin/bd doctor:*)",
+      "Bash(~/.local/bin/bd hooks install:*)",
+      "Bash(~/.local/bin/bd setup:*)",
+      "Bash(~/.local/bin/bd ready:*)",
+      "Bash(~/.local/bin/bd create:*)",
+      "Bash(~/.local/bin/bd dep add:*)",
+      "Bash(~/.local/bin/bd update:*)",
+      "Bash(~/.local/bin/bd close:*)",
+      "Bash(python3:*)",
+      "Bash(~/.local/bin/bd sync:*)"
     ]
   }
 }

@@ -1,18 +1,29 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{{ g.get('locale', 'en') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Speculum{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;900&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+
     {% block oembed_discovery %}{% endblock %}
     {% block head %}{% endblock %}
 </head>
-<body>
+<body hx-boost="true">
     <nav class="main-nav">
         <div class="nav-brand">
             <a href="{{ url_for('index') }}">SPECULUM</a>
-            <span class="nav-tagline">web mirror archive</span>
+            <span class="nav-tagline">Preserving the web</span>
         </div>
 
         <!-- Hamburger menu for mobile -->
@@ -23,28 +34,23 @@
         </button>
 
         <div class="nav-links">
-            <a href="{{ url_for('catalog') }}" {% if request.endpoint == 'catalog' %}class="active"{% endif %}>Catalogo</a>
-            <a href="{{ url_for('sites_list') }}" {% if request.endpoint in ['sites_list', 'add_site', 'site_detail'] %}class="active"{% endif %}>Siti</a>
-            <a href="{{ url_for('crawl_dashboard') }}" {% if request.endpoint in ['crawl_dashboard', 'view_crawl_log'] %}class="active"{% endif %}>Dashboard</a>
-            {% if current_user and current_user.can_edit() %}
-            <a href="{{ url_for('bulk_add_sites') }}" {% if request.endpoint in ['bulk_add_sites', 'bulk_results'] %}class="active"{% endif %}>Import</a>
-            {% endif %}
-            <a href="{{ url_for('categories_list') }}" {% if request.endpoint == 'categories_list' %}class="active"{% endif %}>Categorie</a>
-            <a href="{{ url_for('search_page') }}" {% if request.endpoint == 'search_page' %}class="active"{% endif %}>Cerca</a>
-            <a href="{{ url_for('request_mirror') }}" {% if request.endpoint == 'request_mirror' %}class="active"{% endif %}>Richiedi</a>
+            <!-- Public navigation -->
+            <a href="{{ url_for('catalog') }}" {% if request.endpoint == 'catalog' %}class="active"{% endif %}>Catalog</a>
+            <a href="{{ url_for('search_page') }}" {% if request.endpoint == 'search_page' %}class="active"{% endif %}>Search</a>
+            <a href="{{ url_for('request_mirror') }}" {% if request.endpoint == 'request_mirror' %}class="active"{% endif %}>Request</a>
+            <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>About</a>
+
             {% if current_user and current_user.is_admin() %}
+            <span class="nav-divider">|</span>
             <a href="{{ url_for('admin_mirror_requests') }}" {% if 'admin' in request.endpoint %}class="active"{% endif %}>Admin</a>
             {% endif %}
-            <span class="nav-divider">|</span>
-            {% if current_user %}
-            <span class="nav-user">{{ current_user.username }}</span>
-            <a href="{{ url_for('logout') }}">Esci</a>
-            {% else %}
-            <a href="{{ url_for('login') }}" {% if request.endpoint == 'login' %}class="active"{% endif %}>Accedi</a>
-            {% endif %}
-            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Cambia tema">
-                <span id="theme-icon">◐</span>
-            </button>
+
+            <!-- Language selector -->
+            <div class="lang-selector">
+                <a href="?lang=en" class="lang-link {% if g.get('locale', 'en') == 'en' %}active{% endif %}">EN</a>
+                <span class="lang-sep">/</span>
+                <a href="?lang=it" class="lang-link {% if g.get('locale', 'en') == 'it' %}active{% endif %}">IT</a>
+            </div>
         </div>
     </nav>
     
@@ -59,50 +65,22 @@
             <span class="footer-tagline">Digital preservation through local mirroring</span>
         </div>
         <div class="footer-links">
-            <a href="{{ url_for('about') }}">Chi Siamo</a>
+            <a href="{{ url_for('about') }}">About</a>
             <a href="{{ url_for('privacy') }}">Privacy</a>
-            <a href="{{ url_for('contact') }}">Contatti</a>
+            <a href="{{ url_for('contact') }}">Contact</a>
+            <span class="footer-sep">·</span>
+            {% if current_user %}
+            <a href="{{ url_for('logout') }}" class="footer-login">Logout</a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="footer-login">Login</a>
+            {% endif %}
         </div>
         <div class="footer-version">v1.0</div>
     </footer>
-    
+
     {% block scripts %}{% endblock %}
 
-    <!-- Theme Toggle & Utilities -->
     <script>
-        // Theme management
-        function getTheme() {
-            return localStorage.getItem('theme') || 'auto';
-        }
-
-        function setTheme(theme) {
-            localStorage.setItem('theme', theme);
-            applyTheme(theme);
-        }
-
-        function applyTheme(theme) {
-            const icon = document.getElementById('theme-icon');
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                icon.textContent = '☀';
-            } else if (theme === 'light') {
-                document.documentElement.setAttribute('data-theme', 'light');
-                icon.textContent = '☾';
-            } else {
-                document.documentElement.removeAttribute('data-theme');
-                icon.textContent = '◐';
-            }
-        }
-
-        function toggleTheme() {
-            const current = getTheme();
-            const next = current === 'auto' ? 'dark' : (current === 'dark' ? 'light' : 'auto');
-            setTheme(next);
-        }
-
-        // Apply saved theme on load
-        applyTheme(getTheme());
-
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', function() {
             const navToggle = document.querySelector('.nav-toggle');
@@ -115,7 +93,6 @@
                     navToggle.setAttribute('aria-expanded', isOpen);
                 });
 
-                // Close menu when clicking outside
                 document.addEventListener('click', function(e) {
                     if (!navToggle.contains(e.target) && !navLinks.contains(e.target)) {
                         navLinks.classList.remove('open');
@@ -124,7 +101,6 @@
                     }
                 });
 
-                // Close menu when clicking a link
                 navLinks.querySelectorAll('a').forEach(function(link) {
                     link.addEventListener('click', function() {
                         navLinks.classList.remove('open');
@@ -135,7 +111,7 @@
             }
         });
 
-        // Toast notification helper (XSS-safe)
+        // Toast notification helper
         function showToast(message, type = 'success') {
             let container = document.querySelector('.toast-container');
             if (!container) {

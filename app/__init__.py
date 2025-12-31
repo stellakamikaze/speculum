@@ -24,6 +24,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
+from flask_babel import Babel, gettext as _, lazy_gettext as _l
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +34,20 @@ logger = logging.getLogger(__name__)
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
 cors = CORS()
+babel = Babel()
+
+def get_locale():
+    """Select best language from user preferences."""
+    # Check URL parameter first
+    lang = request.args.get('lang')
+    if lang in ['en', 'it']:
+        session['lang'] = lang
+        return lang
+    # Check session
+    if 'lang' in session:
+        return session['lang']
+    # Check Accept-Language header
+    return request.accept_languages.best_match(['en', 'it'], default='en')
 
 
 def create_app():
@@ -76,6 +91,15 @@ def create_app():
     limiter.init_app(app)
     # CORS for public API routes only
     cors.init_app(app, resources={r"/api/*": {"origins": "*"}, r"/oembed": {"origins": "*"}})
+
+    # Babel for i18n
+    app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+    app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'it']
+    babel.init_app(app, locale_selector=get_locale)
+
+    @app.before_request
+    def set_locale():
+        g.locale = get_locale()
 
     with app.app_context():
         db.create_all()
@@ -480,19 +504,48 @@ def create_app():
 
     @app.route('/')
     def index():
-        """Landing page with gallery and mission"""
+        """Homepage with hero, featured sites, and media gallery"""
+        from sqlalchemy.sql.expression import func
         stats = get_dashboard_stats(db, Site, Video)
-        return render_template('landing.html', stats=stats)
+
+        # Featured sites: random selection of ready sites
+        featured_sites = Site.query.filter_by(status='ready').order_by(func.random()).limit(6).all()
+
+        # Media items from API (reuse existing endpoint logic)
+        media_items = []
+        try:
+            ready_sites = Site.query.filter_by(status='ready').all()
+            import random
+            random.shuffle(ready_sites)
+            for site in ready_sites[:10]:
+                if site.site_type == 'youtube':
+                    videos = Video.query.filter_by(site_id=site.id).limit(2).all()
+                    for video in videos:
+                        if video.thumbnail_url:
+                            media_items.append({
+                                'site_id': site.id,
+                                'thumbnail_url': video.thumbnail_url,
+                                'title': video.title or site.name
+                            })
+                if len(media_items) >= 8:
+                    break
+        except Exception:
+            pass
+
+        return render_template('index.html',
+                               stats=stats,
+                               featured_sites=featured_sites,
+                               media_items=media_items)
 
     @app.route('/catalog')
     def catalog():
-        """Main catalog page with all sites"""
+        """Browse all archived sites"""
         categories = get_categories_ordered(Category)
         uncategorized_sites = Site.query.filter_by(category_id=None).order_by(Site.name).all()
         stats = get_dashboard_stats(db, Site, Video)
         stats['categories'] = len(categories)
 
-        return render_template('index.html',
+        return render_template('catalog.html',
                                categories=categories,
                                uncategorized_sites=uncategorized_sites,
                                stats=stats)
@@ -527,7 +580,7 @@ def create_app():
         categories = get_categories_ordered(Category)
         return render_template('sites.html', sites=sites, categories=categories, filter_type=filter_type)
     
-    @app.route('/sites/add', methods=['GET', 'POST'])
+    @app.route('/admin/sites/add', methods=['GET', 'POST'])
     @edit_required
     def add_site():
         """Add a new site"""
@@ -610,7 +663,7 @@ def create_app():
         ollama_available = check_ollama_safe()
         return render_template('add_site.html', categories=categories, ollama_available=ollama_available)
     
-    @app.route('/sites/bulk', methods=['GET', 'POST'])
+    @app.route('/admin/sites/bulk', methods=['GET', 'POST'])
     @edit_required
     def bulk_add_sites():
         """Bulk add multiple sites"""
@@ -729,7 +782,7 @@ def create_app():
         
         return render_template('site_detail.html', site=site, logs=logs, categories=categories, videos=videos)
     
-    @app.route('/sites/<int:site_id>/crawl', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/crawl', methods=['POST'])
     @edit_required
     def trigger_crawl(site_id):
         """Manually trigger a crawl"""
@@ -738,7 +791,7 @@ def create_app():
             start_crawl(site.id)
         return redirect(url_for('site_detail', site_id=site_id))
     
-    @app.route('/sites/<int:site_id>/delete', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/delete', methods=['POST'])
     @edit_required
     def delete_site(site_id):
         """Delete a site and its mirror"""
@@ -754,7 +807,7 @@ def create_app():
         
         return redirect(url_for('sites_list'))
     
-    @app.route('/sites/<int:site_id>/update', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/update', methods=['POST'])
     @edit_required
     def update_site(site_id):
         """Update site settings"""
@@ -784,7 +837,7 @@ def create_app():
         categories = get_categories_ordered(Category)
         return render_template('categories.html', categories=categories)
     
-    @app.route('/categories/add', methods=['POST'])
+    @app.route('/admin/categories/add', methods=['POST'])
     @edit_required
     def add_category():
         """Add a new category"""
@@ -800,7 +853,7 @@ def create_app():
         
         return redirect(url_for('categories_list'))
     
-    @app.route('/categories/<int:category_id>/delete', methods=['POST'])
+    @app.route('/admin/categories/<int:category_id>/delete', methods=['POST'])
     @edit_required
     def delete_category(category_id):
         """Delete a category (sites become uncategorized)"""
@@ -816,7 +869,7 @@ def create_app():
 
     # ==================== CRAWL DASHBOARD ====================
 
-    @app.route('/dashboard')
+    @app.route('/admin/dashboard')
     def crawl_dashboard():
         """Dashboard showing all crawl statuses"""
         # Get sites grouped by status (still need individual queries for display lists)
@@ -843,7 +896,7 @@ def create_app():
                                active=active,
                                stats=stats)
 
-    @app.route('/sites/<int:site_id>/stop', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/stop', methods=['POST'])
     @edit_required
     def stop_site_crawl(site_id):
         """Stop an active crawl"""
@@ -852,7 +905,7 @@ def create_app():
             return jsonify({'success': success, 'message': message})
         return redirect(url_for('site_detail', site_id=site_id))
 
-    @app.route('/sites/<int:site_id>/retry', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/retry', methods=['POST'])
     @edit_required
     def retry_site_crawl(site_id):
         """Reset error state and retry crawl"""
@@ -871,7 +924,7 @@ def create_app():
             return jsonify({'success': True, 'message': message})
         return redirect(url_for('site_detail', site_id=site_id))
 
-    @app.route('/logs/<int:log_id>')
+    @app.route('/admin/logs/<int:log_id>')
     def view_crawl_log(log_id):
         """View detailed crawl log"""
         log = CrawlLog.query.get_or_404(log_id)
@@ -1073,7 +1126,7 @@ def create_app():
 
         return send_from_directory(directory, filename)
 
-    @app.route('/sites/<int:site_id>/clear-files', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/clear-files', methods=['POST'])
     @admin_required
     def clear_site_files(site_id):
         """Delete crawled files but keep database entry"""
@@ -1347,7 +1400,7 @@ def create_app():
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    @app.route('/sites/<int:site_id>/generate-metadata', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/generate-metadata', methods=['POST'])
     @edit_required
     def generate_site_metadata(site_id):
         """Generate AI metadata for a site (web route)"""
@@ -1461,7 +1514,7 @@ def create_app():
 
     # ==================== WAYBACK MACHINE INTEGRATION ====================
 
-    @app.route('/sites/<int:site_id>/wayback-screenshot', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/wayback-screenshot', methods=['POST'])
     @edit_required
     def fetch_wayback_screenshot(site_id):
         """Fetch screenshot from Wayback Machine"""
@@ -1595,7 +1648,7 @@ def create_app():
         db.session.commit()
         return jsonify(metadata.to_dict())
 
-    @app.route('/sites/<int:site_id>/cultural-metadata', methods=['POST'])
+    @app.route('/admin/sites/<int:site_id>/cultural-metadata', methods=['POST'])
     @edit_required
     def update_cultural_metadata_form(site_id):
         """Form handler: Update cultural metadata"""

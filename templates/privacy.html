@@ -1,147 +1,90 @@
 {% extends "base.html" %}
 
-{% block title %}Privacy Policy — Speculum{% endblock %}
+{% block title %}Privacy — Speculum{% endblock %}
 
 {% block content %}
-<section class="static-page">
-    <div class="page-header">
-        <span class="section-label">Legal</span>
-        <h1>Privacy Policy</h1>
-    </div>
+<article class="static-page">
+    <header class="page-header">
+        <h1 class="page-title">Privacy Policy</h1>
+        <p class="page-subtitle">How we handle your data</p>
+    </header>
 
-    <div class="content-block">
-        <p class="lead">
-            La presente informativa descrive come Speculum raccoglie, utilizza
-            e protegge i dati degli utenti in conformita con il GDPR.
-        </p>
-        <p class="last-updated">Ultimo aggiornamento: Dicembre 2024</p>
-    </div>
-
-    <div class="content-block">
-        <h2>1. Titolare del Trattamento</h2>
+    <section class="content-section">
+        <h2>Data Collection</h2>
         <p>
-            <!-- PLACEHOLDER: Inserire dati del titolare -->
-            Il titolare del trattamento e il gestore del progetto Speculum.
-            Per contatti relativi alla privacy: <a href="{{ url_for('contact') }}">pagina contatti</a>.
-        </p>
-    </div>
-
-    <div class="content-block">
-        <h2>2. Dati Raccolti</h2>
-        <h3>Dati di navigazione</h3>
-        <p>
-            I sistemi informatici acquisiscono automaticamente alcuni dati tecnici
-            durante la navigazione, inclusi:
+            Speculum collects minimal data necessary to operate the archive service.
+            When you submit a mirror request, we store:
         </p>
         <ul class="feature-list">
-            <li>Indirizzo IP (anonimizzato dopo 7 giorni)</li>
-            <li>Data e ora della richiesta</li>
-            <li>Pagine visitate</li>
-            <li>Browser e sistema operativo</li>
+            <li>The URL you submitted</li>
+            <li>Optional name and contact email</li>
+            <li>Reason for the request</li>
+            <li>Submission timestamp</li>
         </ul>
+    </section>
 
-        <h3>Dati forniti volontariamente</h3>
+    <section class="content-section">
+        <h2>Navigation Data</h2>
+        <p>Our systems automatically collect:</p>
+        <ul class="feature-list">
+            <li>IP address (anonymized after 7 days)</li>
+            <li>Date and time of request</li>
+            <li>Pages visited</li>
+            <li>Browser and operating system</li>
+        </ul>
+    </section>
+
+    <section class="content-section">
+        <h2>Purpose</h2>
+        <p>Data is used for:</p>
+        <ul class="feature-list">
+            <li>Processing archive requests</li>
+            <li>Technical operation of the service</li>
+            <li>Abuse prevention and security</li>
+            <li>Anonymous aggregate statistics</li>
+        </ul>
+    </section>
+
+    <section class="content-section">
+        <h2>Cookies</h2>
         <p>
-            Quando invii una richiesta di mirror o crei un account, raccogliamo:
+            We use only essential technical cookies for session management
+            and language preferences. No tracking or advertising cookies are used.
         </p>
-        <ul class="feature-list">
-            <li>Nome utente (per account registrati)</li>
-            <li>Email (opzionale, per notifiche)</li>
-            <li>URL dei siti proposti</li>
-            <li>Note e descrizioni fornite</li>
-        </ul>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>3. Finalita del Trattamento</h2>
-        <p>I dati sono utilizzati per:</p>
-        <ul class="feature-list">
-            <li>Gestione delle richieste di archiviazione</li>
-            <li>Funzionamento tecnico del servizio</li>
-            <li>Prevenzione abusi e sicurezza</li>
-            <li>Statistiche aggregate (anonime)</li>
-        </ul>
-    </div>
-
-    <div class="content-block">
-        <h2>4. Base Giuridica</h2>
+    <section class="content-section">
+        <h2>Archived Content</h2>
         <p>
-            Il trattamento si basa su:
+            The websites we archive are publicly accessible. We do not modify
+            the content we preserve. If you are the owner of an archived site
+            and wish to have it removed, please <a href="{{ url_for('contact') }}">contact us</a>.
         </p>
-        <ul class="feature-list">
-            <li><strong>Legittimo interesse</strong> — Per il funzionamento del servizio</li>
-            <li><strong>Consenso</strong> — Per comunicazioni opzionali</li>
-            <li><strong>Obbligo legale</strong> — Per adempimenti di legge</li>
-        </ul>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>5. Conservazione dei Dati</h2>
+    <section class="content-section">
+        <h2>Your Rights</h2>
+        <p>You have the right to:</p>
         <ul class="feature-list">
-            <li>Log di accesso: 7 giorni</li>
-            <li>Dati account: fino a cancellazione</li>
-            <li>Richieste mirror: conservate indefinitamente per storico</li>
-        </ul>
-    </div>
-
-    <div class="content-block">
-        <h2>6. Condivisione dei Dati</h2>
-        <p>
-            I dati personali non vengono venduti o condivisi con terze parti,
-            ad eccezione di:
-        </p>
-        <ul class="feature-list">
-            <li>Provider di hosting (per il funzionamento tecnico)</li>
-            <li>Autorita competenti (su richiesta legale)</li>
-        </ul>
-    </div>
-
-    <div class="content-block">
-        <h2>7. Diritti dell'Interessato</h2>
-        <p>Hai diritto di:</p>
-        <ul class="feature-list">
-            <li>Accedere ai tuoi dati personali</li>
-            <li>Richiedere la rettifica di dati inesatti</li>
-            <li>Richiedere la cancellazione dei dati</li>
-            <li>Opporti al trattamento</li>
-            <li>Richiedere la portabilita dei dati</li>
-            <li>Presentare reclamo all'autorita di controllo</li>
+            <li>Access your personal data</li>
+            <li>Request correction of inaccurate data</li>
+            <li>Request deletion of your data</li>
+            <li>Object to data processing</li>
         </ul>
         <p>
-            Per esercitare questi diritti, contattaci tramite la
-            <a href="{{ url_for('contact') }}">pagina contatti</a>.
+            To exercise these rights, visit our <a href="{{ url_for('contact') }}">contact page</a>.
         </p>
-    </div>
+    </section>
 
-    <div class="content-block">
-        <h2>8. Cookie</h2>
-        <p>
-            Speculum utilizza solo cookie tecnici essenziali per il funzionamento
-            del servizio (sessione utente, preferenze tema). Non utilizziamo
-            cookie di profilazione o di terze parti per pubblicita.
-        </p>
-    </div>
-
-    <div class="content-block">
-        <h2>9. Sicurezza</h2>
-        <p>
-            Adottiamo misure tecniche e organizzative per proteggere i dati:
-        </p>
+    <section class="content-section">
+        <h2>Security</h2>
+        <p>We implement technical measures to protect data:</p>
         <ul class="feature-list">
-            <li>Crittografia HTTPS per tutte le comunicazioni</li>
-            <li>Password hashate con algoritmo sicuro (scrypt)</li>
-            <li>Protezione CSRF su tutti i form</li>
-            <li>Rate limiting per prevenire abusi</li>
+            <li>HTTPS encryption for all communications</li>
+            <li>Secure password hashing (scrypt)</li>
+            <li>CSRF protection on all forms</li>
+            <li>Rate limiting to prevent abuse</li>
         </ul>
-    </div>
-
-    <div class="content-block">
-        <h2>10. Contenuti Archiviati</h2>
-        <p>
-            I contenuti archiviati da Speculum provengono da fonti pubbliche sul web.
-            Se sei il proprietario di contenuti archiviati e desideri la rimozione,
-            contattaci tramite la <a href="{{ url_for('contact') }}">pagina contatti</a>.
-        </p>
-    </div>
-</section>
+    </section>
+</article>
 {% endblock %}

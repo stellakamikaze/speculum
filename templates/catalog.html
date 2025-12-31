@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Catalog — Speculum{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<header class="page-header">
+    <div class="header-content">
+        <h1 class="page-title">Archive Catalog</h1>
+        <p class="page-subtitle">Browse all preserved websites and channels</p>
+    </div>
+    <div class="header-stats">
+        <span class="header-stat">{{ stats.total_sites }} sites</span>
+        <span class="header-divider">&middot;</span>
+        <span class="header-stat">{{ stats.ready_sites }} available</span>
+        <span class="header-divider">&middot;</span>
+        <span class="header-stat">{{ "%.1f"|format(stats.total_size / 1073741824) }} GB</span>
+    </div>
+</header>
+
+{% set ns = namespace(section_num=1) %}
+
+{% if categories %}
+{% for category in categories %}
+{% if category.sites %}
+<section class="catalog-section">
+    <div class="section-header">
+        <span class="section-number">{{ "%02d"|format(ns.section_num) }}</span>
+        <h2 class="section-title">{{ category.name }}</h2>
+        <span class="section-count">{{ category.sites|length }} sites</span>
+    </div>
+    {% if category.description %}
+    <p class="section-description">{{ category.description }}</p>
+    {% endif %}
+
+    <div class="sites-grid">
+        {% for site in category.sites %}
+        <article class="site-card">
+            <div class="card-header">
+                <span class="card-type">{% if site.site_type == 'youtube' %}YouTube{% else %}Website{% endif %}</span>
+                <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
+            </div>
+            <h3 class="card-title">
+                <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a>
+            </h3>
+            {% if site.description %}
+            <p class="card-description">{{ site.description[:100] }}{% if site.description|length > 100 %}...{% endif %}</p>
+            {% endif %}
+            <div class="card-meta">
+                {% if site.status == 'ready' %}
+                <span class="meta-pages">{{ site.page_count }} {% if site.site_type == 'youtube' %}videos{% else %}pages{% endif %}</span>
+                <span class="meta-size">{{ site._human_size(site.size_bytes) }}</span>
+                {% elif site.status == 'crawling' %}
+                <span class="meta-status">Crawling...</span>
+                {% elif site.status == 'error' %}
+                <span class="meta-error">Error</span>
+                {% else %}
+                <span class="meta-status">{{ site.status }}</span>
+                {% endif %}
+            </div>
+            <div class="card-actions">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary btn-small">Watch</a>
+                    {% else %}
+                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary btn-small" target="_blank">View</a>
+                    {% endif %}
+                {% endif %}
+                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-ghost btn-small">Details</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% set ns.section_num = ns.section_num + 1 %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if uncategorized_sites %}
+<section class="catalog-section">
+    <div class="section-header">
+        <span class="section-number">{{ "%02d"|format(ns.section_num) }}</span>
+        <h2 class="section-title">Uncategorized</h2>
+        <span class="section-count">{{ uncategorized_sites|length }} sites</span>
+    </div>
+
+    <div class="sites-grid">
+        {% for site in uncategorized_sites %}
+        <article class="site-card">
+            <div class="card-header">
+                <span class="card-type">{% if site.site_type == 'youtube' %}YouTube{% else %}Website{% endif %}</span>
+                <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
+            </div>
+            <h3 class="card-title">
+                <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a>
+            </h3>
+            {% if site.description %}
+            <p class="card-description">{{ site.description[:100] }}{% if site.description|length > 100 %}...{% endif %}</p>
+            {% endif %}
+            <div class="card-meta">
+                {% if site.status == 'ready' %}
+                <span class="meta-pages">{{ site.page_count }} {% if site.site_type == 'youtube' %}videos{% else %}pages{% endif %}</span>
+                <span class="meta-size">{{ site._human_size(site.size_bytes) }}</span>
+                {% elif site.status == 'crawling' %}
+                <span class="meta-status">Crawling...</span>
+                {% elif site.status == 'error' %}
+                <span class="meta-error">Error</span>
+                {% else %}
+                <span class="meta-status">{{ site.status }}</span>
+                {% endif %}
+            </div>
+            <div class="card-actions">
+                {% if site.status == 'ready' %}
+                    {% if site.site_type == 'youtube' %}
+                    <a href="{{ url_for('channel_videos', site_id=site.id) }}" class="btn btn-primary btn-small">Watch</a>
+                    {% else %}
+                    <a href="{{ url_for('serve_mirror', site_path=site._get_mirror_path() + '/') }}" class="btn btn-primary btn-small" target="_blank">View</a>
+                    {% endif %}
+                {% endif %}
+                <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-ghost btn-small">Details</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if not categories and not uncategorized_sites %}
+<div class="empty-state">
+    <h2 class="empty-title">No sites yet</h2>
+    <p class="empty-text">The archive is empty. Be the first to request a site preservation.</p>
+    <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Request Archive</a>
+</div>
+{% endif %}
+
+{% endblock %}
