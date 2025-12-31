@@ -1387,6 +1387,65 @@ def create_app():
             'images': selected
         })
 
+    @app.route('/api/sites/<int:site_id>/preview-images')
+    def api_site_preview_images(site_id):
+        """API: Get preview images from a specific site's mirror"""
+        site = Site.query.get_or_404(site_id)
+        count = min(int(request.args.get('count', 6)), 20)
+        min_size = int(request.args.get('min_size', 10000))  # 10KB default
+
+        images = []
+
+        if site.status == 'ready' and site.site_type != 'youtube':
+            mirror_path = get_mirror_path(site.url)
+            image_extensions = ('.jpg', '.jpeg', '.png', '.webp')
+
+            if os.path.exists(mirror_path):
+                for root, dirs, files in os.walk(mirror_path):
+                    if '_speculum' in root:
+                        continue
+                    depth = root[len(mirror_path):].count(os.sep)
+                    if depth > 4:
+                        continue
+
+                    for f in files:
+                        if f.lower().endswith(image_extensions):
+                            full_path = os.path.join(root, f)
+                            try:
+                                size = os.path.getsize(full_path)
+                                if size < min_size:
+                                    continue
+                                rel_path = os.path.relpath(full_path, MIRRORS_PATH)
+                                images.append({
+                                    'url': f'/media/{rel_path}',
+                                    'filename': f,
+                                    'size': size
+                                })
+                            except (OSError, IOError):
+                                continue
+
+                    if len(images) >= count * 3:
+                        break
+
+        # Sort by size (larger = likely more interesting) and take top N
+        images.sort(key=lambda x: x['size'], reverse=True)
+        top_images = images[:count]
+
+        # Return HTML for HTMX requests
+        if request.headers.get('HX-Request'):
+            if not top_images:
+                return '<div class="card-preview-placeholder">—</div>'
+            html_parts = []
+            for img in top_images:
+                html_parts.append(f'<img src="{img["url"]}" alt="" class="card-preview-img" loading="lazy">')
+            return ''.join(html_parts)
+
+        return jsonify({
+            'site_id': site_id,
+            'site_name': site.name,
+            'images': top_images
+        })
+
     @app.route('/api/sites/<int:site_id>/generate-metadata', methods=['POST'])
     @edit_required
     def api_generate_metadata(site_id):

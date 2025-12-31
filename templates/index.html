@@ -50,23 +50,31 @@
     <div class="sites-gallery">
         {% for site in featured_sites %}
         <article class="site-card">
-            <div class="card-header">
-                <span class="card-type">{% if site.site_type == 'youtube' %}YouTube{% else %}Website{% endif %}</span>
-                <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
+            <div class="card-preview"
+                 hx-get="{{ url_for('api_site_preview_images', site_id=site.id) }}?count=1"
+                 hx-trigger="revealed"
+                 hx-swap="innerHTML">
+                <div class="card-preview-placeholder">—</div>
             </div>
-            <h3 class="card-title">
-                <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a>
-            </h3>
-            {% if site.description %}
-            <p class="card-description">{{ site.description[:120] }}{% if site.description|length > 120 %}...{% endif %}</p>
-            {% endif %}
-            <div class="card-meta">
-                {% if site.category %}
-                <span>{{ site.category.name }}</span>
+            <div class="card-content">
+                <div class="card-header">
+                    <span class="card-type">{% if site.site_type == 'youtube' %}YouTube{% else %}Website{% endif %}</span>
+                    <span class="card-status status-{{ site.status }}">{{ site.status }}</span>
+                </div>
+                <h3 class="card-title">
+                    <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name }}</a>
+                </h3>
+                {% if site.description %}
+                <p class="card-description">{{ site.description[:120] }}{% if site.description|length > 120 %}...{% endif %}</p>
                 {% endif %}
-                {% if site.status == 'ready' %}
-                <span>{{ site._human_size(site.size_bytes) }}</span>
-                {% endif %}
+                <div class="card-meta">
+                    {% if site.category %}
+                    <span>{{ site.category.name }}</span>
+                    {% endif %}
+                    {% if site.status == 'ready' %}
+                    <span>{{ site._human_size(site.size_bytes) }}</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="card-actions">
                 {% if site.status == 'ready' %}
