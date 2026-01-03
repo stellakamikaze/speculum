@@ -1365,6 +1365,61 @@ def create_app():
                 'error': str(e)
             })
 
+    @app.route('/api/preview-url', methods=['POST'])
+    @csrf.exempt  # Allow API calls without CSRF
+    @limiter.limit("10 per minute")
+    def api_preview_url():
+        """API: Pre-crawl URL screening - fetch metadata and generate AI description"""
+        from app.ai_metadata import generate_precrawl_metadata, fetch_url_preview
+
+        url = request.form.get('url') or (request.json.get('url') if request.is_json else None)
+        if not url:
+            return jsonify({'error': 'URL required'}), 400
+
+        # Validate URL format
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            return jsonify({'error': 'Invalid URL format'}), 400
+
+        # Check if site already exists
+        existing = Site.query.filter_by(url=url).first()
+        if existing:
+            return jsonify({
+                'exists': True,
+                'site_id': existing.id,
+                'name': existing.name,
+                'status': existing.status
+            })
+
+        # Generate pre-crawl metadata
+        try:
+            metadata = generate_precrawl_metadata(url)
+            if metadata:
+                return jsonify({
+                    'exists': False,
+                    'name': metadata.get('name'),
+                    'description': metadata.get('description'),
+                    'category': metadata.get('category'),
+                    'confidence': metadata.get('confidence'),
+                    'source': metadata.get('source')
+                })
+            else:
+                # Fallback: just fetch basic preview
+                preview = fetch_url_preview(url)
+                return jsonify({
+                    'exists': False,
+                    'name': preview.get('title'),
+                    'description': preview.get('description'),
+                    'category': None,
+                    'confidence': 0.2,
+                    'source': 'preview_only',
+                    'error': preview.get('error')
+                })
+        except Exception as e:
+            logger.error(f"Error in pre-crawl screening for {url}: {e}")
+            return jsonify({'error': str(e)}), 500
+
     @app.route('/api/crawls/active')
     def api_active_crawls():
         """API: Get all active crawls with live status"""

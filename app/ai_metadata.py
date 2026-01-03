@@ -304,3 +304,197 @@ def update_site_with_ai_metadata(site_id: int) -> bool:
 
         logger.info(f"Updated site {site.id} with AI metadata: {metadata}")
         return True
+
+
+def fetch_url_preview(url: str, timeout: int = 15) -> dict:
+    """
+    Fetch URL and extract metadata without full download.
+    Used for pre-crawl screening.
+
+    Args:
+        url: URL to preview
+        timeout: Request timeout in seconds
+
+    Returns:
+        dict with title, description, keywords, content_type, status_code
+    """
+    import requests
+    from urllib.parse import urlparse
+
+    result = {
+        'title': None,
+        'description': None,
+        'keywords': None,
+        'h1': None,
+        'content_type': None,
+        'status_code': None,
+        'final_url': url,
+        'error': None
+    }
+
+    try:
+        # Use a realistic User-Agent
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,it;q=0.8',
+        }
+
+        # Fetch with redirect following
+        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+        result['status_code'] = response.status_code
+        result['final_url'] = response.url
+        result['content_type'] = response.headers.get('Content-Type', '')
+
+        if response.status_code != 200:
+            result['error'] = f"HTTP {response.status_code}"
+            return result
+
+        # Only parse HTML content
+        if 'text/html' not in result['content_type']:
+            return result
+
+        # Parse only first 100KB to save resources
+        html = response.text[:100000]
+
+        # Use the HTML parser
+        parser = HTMLMetadataParser()
+        parser.feed(html)
+
+        result['title'] = parser.og_title or parser.title
+        result['description'] = parser.og_description or parser.description
+        result['keywords'] = parser.keywords
+        result['h1'] = parser.h1
+
+        # Clean up title
+        if result['title']:
+            result['title'] = re.split(r'\s*[\|–—-]\s*', result['title'])[0].strip()
+
+    except requests.Timeout:
+        result['error'] = 'Connection timeout'
+    except requests.ConnectionError:
+        result['error'] = 'Connection failed'
+    except Exception as e:
+        result['error'] = str(e)
+        logger.error(f"Error fetching URL preview for {url}: {e}")
+
+    return result
+
+
+def generate_precrawl_metadata(url: str) -> dict | None:
+    """
+    Generate AI metadata for a URL before crawling.
+    Fetches URL metadata and uses Ollama to generate description.
+
+    Args:
+        url: URL to analyze
+
+    Returns:
+        dict with name, description, category, confidence, or None on failure
+    """
+    from app.ollama_client import check_ollama_available, OLLAMA_URL, OLLAMA_MODEL
+    import requests
+    import json
+
+    # First fetch URL preview
+    preview = fetch_url_preview(url)
+
+    if preview['error']:
+        logger.warning(f"Could not fetch URL preview for {url}: {preview['error']}")
+        return None
+
+    # If we have good metadata, we can skip AI
+    if preview['title'] and preview['description']:
+        return {
+            'name': sanitize_ai_response(preview['title'])[:200],
+            'description': sanitize_ai_response(preview['description'])[:500],
+            'category': None,
+            'confidence': 0.6,
+            'source': 'html_meta'
+        }
+
+    # Use AI to generate description if Ollama is available
+    if not check_ollama_available():
+        # Fallback to HTML metadata
+        if preview['title']:
+            return {
+                'name': sanitize_ai_response(preview['title'])[:200],
+                'description': sanitize_ai_response(preview['description'])[:500] if preview['description'] else None,
+                'category': None,
+                'confidence': 0.4,
+                'source': 'html_meta_fallback'
+            }
+        return None
+
+    # Get existing categories for context
+    try:
+        from app.models import Category
+        from app import create_app
+        app = create_app()
+        with app.app_context():
+            existing_categories = [c.name for c in Category.query.all()]
+    except:
+        existing_categories = []
+
+    # Build AI prompt
+    prompt = f"""Analizza questi metadati di un sito web:
+
+URL: {url}
+Titolo HTML: {preview['title'] or 'Non disponibile'}
+Meta description: {preview['description'] or 'Non disponibile'}
+Keywords: {preview['keywords'] or 'Non disponibile'}
+Primo H1: {preview['h1'] or 'Non disponibile'}
+
+Categorie esistenti: {', '.join(existing_categories) if existing_categories else 'Nessuna'}
+
+Basandoti su queste informazioni, genera una breve descrizione del sito.
+Rispondi SOLO con JSON valido:
+{{"name": "nome breve e descrittivo (max 50 char)", "description": "descrizione del contenuto (max 200 char)", "category": "categoria appropriata", "confidence": 0.0-1.0}}"""
+
+    try:
+        response = requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "num_predict": 250
+                }
+            },
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            text = result.get('response', '').strip()
+
+            # Extract JSON from response
+            start = text.find('{')
+            end = text.rfind('}') + 1
+            if start >= 0 and end > start:
+                json_str = text[start:end]
+                metadata = json.loads(json_str)
+                return {
+                    'name': sanitize_ai_response(metadata.get('name', preview['title'] or ''))[:200],
+                    'description': sanitize_ai_response(metadata.get('description', ''))[:500],
+                    'category': sanitize_ai_response(metadata.get('category', '')),
+                    'confidence': float(metadata.get('confidence', 0.7)),
+                    'source': 'ollama'
+                }
+
+    except Exception as e:
+        logger.error(f"Error generating pre-crawl AI metadata for {url}: {e}")
+
+    # Fallback to HTML metadata
+    if preview['title']:
+        return {
+            'name': sanitize_ai_response(preview['title'])[:200],
+            'description': sanitize_ai_response(preview['description'])[:500] if preview['description'] else None,
+            'category': None,
+            'confidence': 0.3,
+            'source': 'html_fallback'
+        }
+
+    return None
