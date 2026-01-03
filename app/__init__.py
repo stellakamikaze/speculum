@@ -50,6 +50,18 @@ def get_locale():
     return request.accept_languages.best_match(['en', 'it'], default='en')
 
 
+def escape_xml(text):
+    """Escape special characters for XML/Atom feed."""
+    if text is None:
+        return ''
+    return (str(text)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
+
+
 def create_app():
     app = Flask(__name__,
                 template_folder='../templates',
@@ -564,7 +576,69 @@ def create_app():
     def contact():
         """Contact page"""
         return render_template('contact.html')
-    
+
+    @app.route('/feed')
+    @app.route('/feed.xml')
+    @app.route('/rss')
+    @app.route('/atom.xml')
+    def feed():
+        """Atom feed for recently archived sites"""
+        from flask import Response
+        from datetime import datetime
+
+        # Get recent ready sites, ordered by last_crawl (most recent first)
+        recent_sites = Site.query.filter_by(status='ready')\
+            .order_by(Site.last_crawl.desc())\
+            .limit(20)\
+            .all()
+
+        # Build Atom feed
+        base_url = request.url_root.rstrip('/')
+        updated = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        entries = []
+        for site in recent_sites:
+            pub_date = (site.last_crawl or site.created_at or datetime.utcnow()).strftime('%Y-%m-%dT%H:%M:%SZ')
+            site_url = f"{base_url}/sites/{site.id}"
+
+            # Determine content type
+            content_type = "YouTube Channel" if site.site_type == 'youtube' else "Website"
+            category_name = site.category.name if site.category else "Uncategorized"
+
+            # Build description
+            description = site.description or f"Archived {content_type.lower()}"
+            if site.page_count > 0:
+                if site.site_type == 'youtube':
+                    description += f" ({site.page_count} videos)"
+                else:
+                    description += f" ({site.page_count} pages)"
+
+            entries.append(f'''  <entry>
+    <title>{escape_xml(site.name)}</title>
+    <link href="{site_url}" rel="alternate"/>
+    <id>{site_url}</id>
+    <updated>{pub_date}</updated>
+    <summary>{escape_xml(description)}</summary>
+    <category term="{escape_xml(category_name)}"/>
+    <content type="html">&lt;p&gt;{escape_xml(description)}&lt;/p&gt;&lt;p&gt;Type: {content_type}&lt;/p&gt;&lt;p&gt;Original URL: &lt;a href="{escape_xml(site.url)}"&gt;{escape_xml(site.url)}&lt;/a&gt;&lt;/p&gt;</content>
+  </entry>''')
+
+        feed_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Speculum - Web Archive</title>
+  <subtitle>Recently archived websites and YouTube channels</subtitle>
+  <link href="{base_url}/feed" rel="self"/>
+  <link href="{base_url}/" rel="alternate"/>
+  <id>{base_url}/</id>
+  <updated>{updated}</updated>
+  <author>
+    <name>Speculum</name>
+  </author>
+{chr(10).join(entries)}
+</feed>'''
+
+        return Response(feed_xml, mimetype='application/atom+xml')
+
     @app.route('/sites')
     def sites_list():
         """List all sites"""
