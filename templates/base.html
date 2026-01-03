@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Speculum{% endblock %}</title>
 
-    <!-- Fonts: Inter + Oswald (Bold Display) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
-
     <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
@@ -34,18 +29,15 @@
         </button>
 
         <div class="nav-links">
-            <!-- Public navigation -->
             <a href="{{ url_for('catalog') }}" {% if request.endpoint == 'catalog' %}class="active"{% endif %}>Catalog</a>
             <a href="{{ url_for('search_page') }}" {% if request.endpoint == 'search_page' %}class="active"{% endif %}>Search</a>
             <a href="{{ url_for('request_mirror') }}" {% if request.endpoint == 'request_mirror' %}class="active"{% endif %}>Request</a>
             <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>About</a>
 
             {% if current_user and current_user.is_admin() %}
-            <span class="nav-divider">|</span>
             <a href="{{ url_for('admin_mirror_requests') }}" {% if 'admin' in request.endpoint %}class="active"{% endif %}>Admin</a>
             {% endif %}
 
-            <!-- Language selector -->
             <div class="lang-selector">
                 <a href="?lang=en" class="lang-link {% if g.get('locale', 'en') == 'en' %}active{% endif %}">EN</a>
                 <span class="lang-sep">/</span>
@@ -53,11 +45,11 @@
             </div>
         </div>
     </nav>
-    
+
     <main class="container">
         {% block content %}{% endblock %}
     </main>
-    
+
     <footer class="main-footer">
         <div class="footer-content">
             <span class="footer-brand">SPECULUM</span>

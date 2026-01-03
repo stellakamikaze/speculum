@@ -52,7 +52,6 @@
         <h2 class="section-title">{{ category.name }}</h2>
         <span class="section-count">{{ category.sites|length }} siti</span>
     </div>
-    <div class="section-line"></div>
 
     <div class="sites-grid">
         {% for site in category.sites %}
@@ -97,7 +96,6 @@
         <h2 class="section-title">Non Categorizzati</h2>
         <span class="section-count">{{ uncategorized_sites|length }} siti</span>
     </div>
-    <div class="section-line"></div>
 
     <div class="sites-grid">
         {% for site in uncategorized_sites %}
