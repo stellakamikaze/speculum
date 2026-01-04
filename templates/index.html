@@ -2,6 +2,34 @@
 
 {% block title %}Speculum — Web Archive{% endblock %}
 
+{% block meta_description %}Speculum archives websites and YouTube channels at risk of disappearing. Browse {{ stats.total_sites }} archived sites and {{ stats.total_videos }} videos.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Speculum",
+    "alternateName": "Speculum Web Archive",
+    "url": "{{ request.url_root }}",
+    "description": "Digital archiving initiative preserving websites and YouTube channels at risk of disappearing",
+    "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "{{ url_for('search_page', _external=True) }}?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "Speculum",
+        "url": "{{ request.url_root }}"
+    }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section - Swiss International Style -->
 <section class="hero swiss-grid-pattern">

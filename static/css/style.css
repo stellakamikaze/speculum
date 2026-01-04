@@ -987,6 +987,50 @@ img {
     font-family: var(--font-mono);
 }
 
+/* --- FAQ Section --- */
+.faq-section {
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-xl);
+    border-top: 2px solid var(--border);
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.faq-item {
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--space-md) 0;
+}
+
+.faq-item:last-child {
+    border-bottom: none;
+}
+
+.faq-item dt {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.faq-item dd {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.faq-item dd a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.faq-item dd a:hover {
+    color: var(--accent-hover);
+}
+
 /* ===========================================
    FORMS
    =========================================== */

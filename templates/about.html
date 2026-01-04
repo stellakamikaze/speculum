@@ -2,6 +2,59 @@
 
 {% block title %}About — Speculum{% endblock %}
 
+{% block meta_description %}Speculum is a digital archiving initiative preserving websites and YouTube channels at risk of disappearing. Learn about our mission, technology, and how to contribute.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What is Speculum?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum is a digital archiving initiative dedicated to preserving online content at risk of disappearing. We mirror websites, YouTube channels, and digital publications for future generations."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What types of content does Speculum archive?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum archives personal websites and blogs, independent publications and zines, YouTube channels and video content, community forums, cultural documentation, and sites at risk of closure."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What technology does Speculum use?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum uses open source tools including wget for complete website mirroring, yt-dlp for YouTube video archiving, SingleFile for JavaScript-heavy sites, and Ollama for AI-powered categorization."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How can I request a site to be archived?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "You can submit sites at risk through our request form. Simply provide the URL and optionally a description of why the site should be preserved."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is Speculum free to use?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Speculum is free. All archived content is publicly accessible for research, education, and preservation purposes."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <article class="static-page">
     <header class="page-header">
@@ -56,6 +109,32 @@
         <div class="section-actions">
             <a href="{{ url_for('request_mirror') }}" class="btn btn-primary">Request an Archive</a>
         </div>
+    </section>
+
+    <section class="content-section faq-section">
+        <h2>Frequently Asked Questions</h2>
+        <dl class="faq-list">
+            <div class="faq-item">
+                <dt>What is Speculum?</dt>
+                <dd>Speculum is a digital archiving initiative dedicated to preserving online content at risk of disappearing. We mirror websites, YouTube channels, and digital publications for future generations.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>What types of content does Speculum archive?</dt>
+                <dd>We archive personal websites and blogs, independent publications and zines, YouTube channels and video content, community forums, cultural documentation, and sites at risk of closure.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>What technology does Speculum use?</dt>
+                <dd>Speculum uses open source tools including wget for complete website mirroring, yt-dlp for YouTube video archiving, SingleFile for JavaScript-heavy sites, and Ollama for AI-powered categorization.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>How can I request a site to be archived?</dt>
+                <dd>You can submit sites at risk through our <a href="{{ url_for('request_mirror') }}">request form</a>. Simply provide the URL and optionally a description of why the site should be preserved.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Is Speculum free to use?</dt>
+                <dd>Yes, Speculum is completely free. All archived content is publicly accessible for research, education, and preservation purposes.</dd>
+            </div>
+        </dl>
     </section>
 </article>
 {% endblock %}
