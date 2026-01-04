@@ -145,10 +145,10 @@ Speculum puo evolvere per diventare l'infrastruttura tecnica di Celeste:
 - **Highlight modifiche** nel testo
 - **Timeline** delle versioni di un sito
 
-#### 9. RSS Feed
-- **Feed delle nuove archiviazioni**
-- **Feed per categoria**
-- **Feed personalizzati** per utenti registrati
+#### 9. RSS Feed ✅
+- [x] **Feed delle nuove archiviazioni** (`/feed`, `/rss`, `/atom.xml`)
+- [ ] **Feed per categoria**
+- [ ] **Feed personalizzati** per utenti registrati
 
 #### 10. API REST Pubblica
 ```
@@ -304,11 +304,20 @@ Riferimento: [Awesome Web Archiving](https://github.com/iipc/awesome-web-archivi
 ### Fase 3: Standard
 - [x] Export Ghost CMS (`app/export.py`)
 - [x] Wayback Machine integration (`app/wayback.py`)
+- [x] RSS/Atom feed (`/feed`, `/rss`, `/atom.xml`)
+- [x] AI pre-crawl screening (`/api/preview-url`)
 - [ ] Export WARC (formato ISO)
 - [ ] API REST v1 documentata
-- [ ] RSS feed
 
-### Fase 4: Scalabilita (ongoing)
+### Fase 4: Distribuzione & SEO (Epic 6 - NEW)
+- [ ] Sitemap.xml + robots.txt automatici
+- [ ] SEO meta tags (Open Graph, Twitter Cards)
+- [ ] Schema markup AEO (FAQPage, HowTo, Organization)
+- [ ] Cache headers e performance
+- [ ] Landing pages per target (archivisti, ricercatori, librerie)
+- [ ] Documentazione API OpenAPI/Swagger
+
+### Fase 5: Scalabilita (ongoing)
 - [ ] Migrazione a PostgreSQL
 - [ ] Redis per caching/rate limiting
 - [ ] Prometheus + Grafana
@@ -471,4 +480,4 @@ Riferimento: [Awesome Web Archiving](https://github.com/iipc/awesome-web-archivi
 
 ---
 
-*Documento generato il 29/12/2024 - Speculum v1.0 + Celeste*
+*Ultimo aggiornamento: 04/01/2026 - Speculum v1.1 + Celeste*

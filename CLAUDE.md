@@ -61,7 +61,10 @@ pending → crawling → ready (success)
 GET  /api/sites              # List all
 GET  /api/sites/<id>/status  # Crawl status
 GET  /api/search?q=keyword   # Full-text search
+POST /api/preview-url        # Pre-crawl AI screening (no auth)
 POST /api/sites/<id>/generate-metadata  # AI metadata (auth required)
+
+GET  /feed                   # Atom feed (also /feed.xml, /rss, /atom.xml)
 ```
 
 ## Features Implemented
@@ -71,8 +74,11 @@ POST /api/sites/<id>/generate-metadata  # AI metadata (auth required)
 - Ghost CMS export
 - Wayback Machine integration
 - AI metadata generation (Ollama)
+  - Pre-crawl screening: fetch URL metadata + AI description
+  - Post-crawl review: analyze downloaded content
 - Telegram notifications
 - oEmbed support
+- Atom/RSS feed for new archives
 
 ## Environment Variables
 
@@ -116,6 +122,31 @@ bd close <id>     # Complete task
 2. `/write-plan` - Detail implementation steps
 3. TDD: test first, then implement
 4. `verification-before-completion` - Verify before claiming done
+
+## Distribution Strategy
+
+Checklist per il lancio pubblico (Epic 6):
+
+### SEO/AEO Optimization
+1. **Sitemap + robots.txt** - Generazione automatica
+2. **Meta tags** - Open Graph, Twitter Cards, canonical URLs
+3. **Schema markup** - JSON-LD per Organization, FAQPage, HowTo
+4. **Cache headers** - ETag, max-age per static assets
+
+### Landing Pages
+- Target: archivisti, ricercatori, librerie indipendenti
+- FAQ con schema markup
+- Call-to-action chiari
+
+### Tracking
+- Google Search Console
+- Ahrefs (free tier)
+
+### AEO Best Practices
+- Risposte concise (40-60 parole) all'inizio delle pagine
+- Subheading come domande naturali
+- Liste strutturate (preferite dagli LLM)
+- Anno corrente nei title tag per freshness
 
 ## Roadmap
 
