@@ -2192,6 +2192,96 @@ Allow: /search
         )
         return response
 
+    @app.route('/api/export/ghost/<int:site_id>')
+    @edit_required
+    def api_export_ghost_site(site_id):
+        """API: Export single site to Ghost CMS format"""
+        from app.export import GhostExporter, slugify
+
+        site = Site.query.get_or_404(site_id)
+        base_url = request.host_url.rstrip('/')
+        exporter = GhostExporter(base_url=base_url)
+
+        post = exporter.export_site(site)
+
+        # Wrap in Ghost import format
+        data = {
+            'db': [{
+                'meta': {
+                    'exported_on': int(datetime.utcnow().timestamp() * 1000),
+                    'version': '5.0.0'
+                },
+                'data': {
+                    'posts': [post],
+                    'tags': post.get('tags', [])
+                }
+            }]
+        }
+
+        filename = f"speculum_ghost_{site.id}_{slugify(site.name)}.json"
+        response = Response(
+            json.dumps(data, indent=2, ensure_ascii=False),
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+        return response
+
+    @app.route('/api/ghost/webhook', methods=['POST'])
+    @csrf.exempt
+    def api_ghost_webhook():
+        """
+        Webhook endpoint for Ghost CMS integration.
+        Ghost can notify Speculum when posts are published/updated.
+        Requires GHOST_WEBHOOK_SECRET env var for authentication.
+        """
+        import hmac
+        import hashlib
+
+        webhook_secret = os.environ.get('GHOST_WEBHOOK_SECRET')
+        if not webhook_secret:
+            app.logger.warning("Ghost webhook called but GHOST_WEBHOOK_SECRET not configured")
+            return jsonify({'error': 'Webhook not configured'}), 501
+
+        # Verify webhook signature
+        signature = request.headers.get('X-Ghost-Signature', '')
+        if signature:
+            # Ghost sends signature as sha256=<hex>
+            expected = 'sha256=' + hmac.new(
+                webhook_secret.encode(),
+                request.data,
+                hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                app.logger.warning("Ghost webhook signature mismatch")
+                return jsonify({'error': 'Invalid signature'}), 401
+
+        data = request.get_json(silent=True) or {}
+        event_type = data.get('type', 'unknown')
+
+        app.logger.info(f"Ghost webhook received: {event_type}")
+
+        # Handle different event types
+        if event_type == 'post.published':
+            # A post was published - could trigger re-export
+            post_data = data.get('post', {})
+            app.logger.info(f"Ghost post published: {post_data.get('title', 'Unknown')}")
+        elif event_type == 'site.changed':
+            # Site settings changed
+            app.logger.info("Ghost site settings changed")
+
+        return jsonify({'success': True, 'event': event_type})
+
+    @app.route('/api/ghost/status')
+    def api_ghost_status():
+        """Check Ghost integration status"""
+        webhook_configured = bool(os.environ.get('GHOST_WEBHOOK_SECRET'))
+
+        return jsonify({
+            'webhook_configured': webhook_configured,
+            'oembed_available': True,
+            'export_endpoint': url_for('api_export_ghost', _external=True)
+        })
+
     @app.route('/api/export/sites')
     @edit_required
     def api_export_sites():

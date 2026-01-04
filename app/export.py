@@ -71,12 +71,20 @@ class GhostExporter:
         if feature_image:
             post['feature_image'] = feature_image
 
-        # Add tags
+        # Add tags (categories + site tags + type)
         tags = []
         if site.category:
-            tags.append({'name': site.category.name})
+            tags.append({'name': site.category.name, 'slug': slugify(site.category.name)})
+        # Include site tags from the new tag system
+        if hasattr(site, 'tags') and site.tags:
+            for tag in site.tags:
+                tags.append({
+                    'name': tag.name,
+                    'slug': slugify(tag.name),
+                    'description': f'Tag color: {tag.color}' if tag.color else ''
+                })
         if site.site_type == 'youtube':
-            tags.append({'name': 'YouTube'})
+            tags.append({'name': 'YouTube', 'slug': 'youtube'})
         post['tags'] = tags
 
         return post

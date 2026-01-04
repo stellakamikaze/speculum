@@ -42,6 +42,8 @@ tags:
     description: Internet Archive integration
   - name: Export
     description: Data export (requires authentication)
+  - name: Ghost
+    description: Ghost CMS integration - export and webhooks
 
 paths:
   /sites:
@@ -575,6 +577,127 @@ paths:
           description: Tag removed from site
         '404':
           description: Site or tag not found
+
+  /export/ghost:
+    get:
+      tags: [Ghost]
+      summary: Export all sites to Ghost format
+      description: |
+        Exports all ready sites in Ghost CMS import format.
+        Requires authentication.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [website, youtube]
+          description: Filter by site type
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by category ID
+      responses:
+        '200':
+          description: Ghost import JSON file
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  db:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        meta:
+                          type: object
+                        data:
+                          type: object
+                          properties:
+                            posts:
+                              type: array
+                            tags:
+                              type: array
+        '401':
+          description: Authentication required
+
+  /export/ghost/{site_id}:
+    get:
+      tags: [Ghost]
+      summary: Export single site to Ghost format
+      description: |
+        Exports a single site as Ghost CMS post.
+        Requires authentication.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ghost import JSON for single site
+        '404':
+          description: Site not found
+
+  /ghost/status:
+    get:
+      tags: [Ghost]
+      summary: Check Ghost integration status
+      description: Returns the status of Ghost CMS integration configuration.
+      responses:
+        '200':
+          description: Ghost status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhook_configured:
+                    type: boolean
+                  oembed_available:
+                    type: boolean
+                  export_endpoint:
+                    type: string
+                    format: uri
+
+  /ghost/webhook:
+    post:
+      tags: [Ghost]
+      summary: Ghost webhook endpoint
+      description: |
+        Receives webhooks from Ghost CMS.
+        Requires GHOST_WEBHOOK_SECRET env var to be configured.
+        Ghost sends signature in X-Ghost-Signature header.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  description: Event type (post.published, site.changed, etc.)
+                post:
+                  type: object
+                  description: Post data (for post events)
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  event:
+                    type: string
+        '401':
+          description: Invalid signature
+        '501':
+          description: Webhook not configured
 
 components:
   schemas:
