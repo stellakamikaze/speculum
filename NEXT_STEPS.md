@@ -147,7 +147,7 @@ Speculum puo evolvere per diventare l'infrastruttura tecnica di Celeste:
 
 #### 9. RSS Feed ✅
 - [x] **Feed delle nuove archiviazioni** (`/feed`, `/rss`, `/atom.xml`)
-- [ ] **Feed per categoria**
+- [x] **Feed per categoria** (`/feed/category/<id>`, `/feed/category/<slug>`)
 - [ ] **Feed personalizzati** per utenti registrati
 
 #### 10. API REST Pubblica

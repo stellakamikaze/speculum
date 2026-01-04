@@ -65,6 +65,8 @@ POST /api/preview-url        # Pre-crawl AI screening (no auth)
 POST /api/sites/<id>/generate-metadata  # AI metadata (auth required)
 
 GET  /feed                   # Atom feed (also /feed.xml, /rss, /atom.xml)
+GET  /feed/category/<id>     # Category-specific feed (by ID)
+GET  /feed/category/<slug>   # Category-specific feed (by name)
 ```
 
 ## Features Implemented

@@ -317,7 +317,7 @@ def create_app():
             response.headers['Cache-Control'] = 'public, max-age=3600'
 
         # RSS/Atom feeds: cache for 15 minutes
-        elif path in ['/feed', '/feed.xml', '/rss', '/atom.xml']:
+        elif path in ['/feed', '/feed.xml', '/rss', '/atom.xml'] or path.startswith('/feed/category/'):
             response.headers['Cache-Control'] = 'public, max-age=900'
 
         # HTML pages: no-cache but allow conditional requests (ETag)
@@ -757,6 +757,81 @@ def create_app():
 
         return Response(feed_xml, mimetype='application/atom+xml')
 
+    @app.route('/feed/category/<int:category_id>')
+    @app.route('/feed/category/<int:category_id>/atom.xml')
+    def feed_by_category_id(category_id):
+        """Atom feed for sites in a specific category (by ID)"""
+        category = Category.query.get_or_404(category_id)
+        return _generate_category_feed(category)
+
+    @app.route('/feed/category/<slug>')
+    @app.route('/feed/category/<slug>/atom.xml')
+    def feed_by_category_slug(slug):
+        """Atom feed for sites in a specific category (by slug/name)"""
+        # Try to find category by name (case-insensitive)
+        category = Category.query.filter(
+            db.func.lower(Category.name) == slug.lower()
+        ).first_or_404()
+        return _generate_category_feed(category)
+
+    def _generate_category_feed(category):
+        """Generate Atom feed for a specific category"""
+        from flask import Response
+        from datetime import datetime
+
+        # Get recent ready sites in this category
+        recent_sites = Site.query.filter_by(status='ready', category_id=category.id)\
+            .order_by(Site.last_crawl.desc())\
+            .limit(20)\
+            .all()
+
+        # Build Atom feed
+        base_url = request.url_root.rstrip('/')
+        updated = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        category_name_escaped = escape_xml(category.name)
+
+        entries = []
+        for site in recent_sites:
+            pub_date = (site.last_crawl or site.created_at or datetime.utcnow()).strftime('%Y-%m-%dT%H:%M:%SZ')
+            site_url = f"{base_url}/sites/{site.id}"
+
+            # Determine content type
+            content_type = "YouTube Channel" if site.site_type == 'youtube' else "Website"
+
+            # Build description
+            description = site.description or f"Archived {content_type.lower()}"
+            if site.page_count > 0:
+                if site.site_type == 'youtube':
+                    description += f" ({site.page_count} videos)"
+                else:
+                    description += f" ({site.page_count} pages)"
+
+            entries.append(f'''  <entry>
+    <title>{escape_xml(site.name)}</title>
+    <link href="{site_url}" rel="alternate"/>
+    <id>{site_url}</id>
+    <updated>{pub_date}</updated>
+    <summary>{escape_xml(description)}</summary>
+    <category term="{category_name_escaped}"/>
+    <content type="html">&lt;p&gt;{escape_xml(description)}&lt;/p&gt;&lt;p&gt;Type: {content_type}&lt;/p&gt;&lt;p&gt;Original URL: &lt;a href="{escape_xml(site.url)}"&gt;{escape_xml(site.url)}&lt;/a&gt;&lt;/p&gt;</content>
+  </entry>''')
+
+        feed_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Speculum - {category_name_escaped}</title>
+  <subtitle>Recently archived sites in category: {category_name_escaped}</subtitle>
+  <link href="{base_url}/feed/category/{category.id}" rel="self"/>
+  <link href="{base_url}/catalog?category={category.id}" rel="alternate"/>
+  <id>{base_url}/feed/category/{category.id}</id>
+  <updated>{updated}</updated>
+  <author>
+    <name>Speculum</name>
+  </author>
+{chr(10).join(entries)}
+</feed>'''
+
+        return Response(feed_xml, mimetype='application/atom+xml')
+
     @app.route('/sitemap.xml')
     def sitemap():
         """Dynamic XML sitemap for SEO"""
@@ -812,13 +887,19 @@ def create_app():
     <priority>0.7</priority>
   </url>''')
 
-        # Add category pages
+        # Add category pages and category feeds
         categories = Category.query.all()
         for cat in categories:
             urls.append(f'''  <url>
     <loc>{base_url}/categories?filter={cat.id}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
+  </url>''')
+            # Category-specific feed
+            urls.append(f'''  <url>
+    <loc>{base_url}/feed/category/{cat.id}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.4</priority>
   </url>''')
 
         sitemap_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
