@@ -2282,6 +2282,51 @@ Allow: /search
             'export_endpoint': url_for('api_export_ghost', _external=True)
         })
 
+    # ==================== STORAGE API ====================
+
+    @app.route('/api/storage')
+    @admin_required
+    def api_storage():
+        """API: Get storage summary"""
+        from app.storage import get_storage_summary
+        return jsonify(get_storage_summary())
+
+    @app.route('/api/storage/disk')
+    @admin_required
+    def api_storage_disk():
+        """API: Get disk usage only"""
+        from app.storage import get_disk_usage
+        return jsonify(get_disk_usage())
+
+    @app.route('/api/storage/sites')
+    @admin_required
+    def api_storage_sites():
+        """API: Get per-site storage breakdown"""
+        from app.storage import get_site_sizes
+        return jsonify(get_site_sizes())
+
+    @app.route('/api/storage/alerts')
+    @admin_required
+    def api_storage_alerts():
+        """API: Get storage alerts"""
+        from app.storage import get_storage_alerts
+        return jsonify(get_storage_alerts())
+
+    @app.route('/api/storage/orphans')
+    @admin_required
+    def api_storage_orphans():
+        """API: Find orphan directories without DB entries"""
+        from app.storage import cleanup_orphan_directories
+        return jsonify(cleanup_orphan_directories())
+
+    @app.route('/admin/storage')
+    @admin_required
+    def admin_storage():
+        """Storage dashboard page"""
+        from app.storage import get_storage_summary
+        data = get_storage_summary()
+        return render_template('admin_storage.html', **data)
+
     @app.route('/api/export/sites')
     @edit_required
     def api_export_sites():

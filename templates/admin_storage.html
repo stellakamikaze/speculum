@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Storage Dashboard — Speculum{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <span class="section-label">Admin</span>
+    <h1>Storage Dashboard</h1>
+</header>
+
+<!-- Alerts -->
+{% if alerts %}
+<div class="storage-alerts">
+    {% for alert in alerts %}
+    <div class="alert alert-{{ alert.level }}">
+        <strong>{% if alert.level == 'critical' %}CRITICO{% elif alert.level == 'warning' %}ATTENZIONE{% else %}INFO{% endif %}:</strong>
+        {{ alert.message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Disk Usage Overview -->
+<section class="storage-section">
+    <h2>Utilizzo Disco</h2>
+
+    {% if disk.error %}
+    <p class="error">Errore: {{ disk.error }}</p>
+    {% else %}
+    <div class="disk-usage-container">
+        <div class="disk-usage-bar">
+            <div class="disk-usage-fill {% if disk.used_percent >= 90 %}critical{% elif disk.used_percent >= 80 %}warning{% endif %}"
+                 style="width: {{ disk.used_percent }}%">
+            </div>
+        </div>
+        <div class="disk-usage-labels">
+            <span>{{ disk.used_percent }}% utilizzato</span>
+            <span>{{ disk.free_human }} liberi su {{ disk.total_human }}</span>
+        </div>
+    </div>
+
+    <div class="disk-stats">
+        <div class="stat-card">
+            <span class="stat-value">{{ disk.used_human }}</span>
+            <span class="stat-label">Utilizzato</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ disk.free_human }}</span>
+            <span class="stat-label">Libero</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ disk.total_human }}</span>
+            <span class="stat-label">Totale</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ summary.total_mirror_size_human }}</span>
+            <span class="stat-label">Mirror</span>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Summary Stats -->
+<section class="storage-section">
+    <h2>Riepilogo</h2>
+    <div class="summary-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ summary.total_sites }}</span>
+            <span class="stat-label">Siti totali</span>
+        </div>
+        {% if summary.largest_site %}
+        <div class="stat-card">
+            <span class="stat-value">{{ summary.largest_site.size_human }}</span>
+            <span class="stat-label">Sito maggiore</span>
+            <span class="stat-detail">{{ summary.largest_site.name[:20] }}{% if summary.largest_site.name|length > 20 %}...{% endif %}</span>
+        </div>
+        {% endif %}
+        {% if summary.sites_with_issues > 0 %}
+        <div class="stat-card stat-warning">
+            <span class="stat-value">{{ summary.sites_with_issues }}</span>
+            <span class="stat-label">Con discrepanze</span>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Thresholds -->
+<section class="storage-section">
+    <h2>Soglie Alert</h2>
+    <div class="thresholds-info">
+        <p><span class="threshold-badge warning">Warning</span> a {{ thresholds.warning }}% utilizzo</p>
+        <p><span class="threshold-badge critical">Critico</span> a {{ thresholds.critical }}% utilizzo</p>
+    </div>
+</section>
+
+<!-- Per-Site Breakdown -->
+<section class="storage-section">
+    <h2>Dettaglio per Sito</h2>
+
+    <table class="storage-table">
+        <thead>
+            <tr>
+                <th>Sito</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Dimensione</th>
+                <th>File</th>
+                <th>Ultimo crawl</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for site in sites %}
+            <tr class="{% if site.size_mismatch %}row-warning{% endif %}">
+                <td>
+                    <a href="{{ url_for('site_detail', site_id=site.id) }}">{{ site.name[:30] }}{% if site.name|length > 30 %}...{% endif %}</a>
+                    {% if site.size_mismatch %}
+                    <span class="mismatch-badge" title="Dimensione DB ({{ site.db_size|filesizeformat }}) diversa da disco">!</span>
+                    {% endif %}
+                </td>
+                <td><span class="type-badge {{ site.site_type }}">{{ 'YT' if site.site_type == 'youtube' else 'Web' }}</span></td>
+                <td><span class="status-badge status-{{ site.status }}">{{ site.status }}</span></td>
+                <td>{{ site.size_human }}</td>
+                <td>{{ site.file_count }}</td>
+                <td>{{ site.last_crawl[:10] if site.last_crawl else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('site_detail', site_id=site.id) }}" class="btn btn-small">Dettagli</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="empty-text">Nessun sito archiviato</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<!-- Admin Links -->
+<div class="admin-links">
+    <h3>Altre Funzioni Admin</h3>
+    <a href="{{ url_for('admin_export') }}" class="btn btn-secondary">Export/Backup</a>
+    <a href="{{ url_for('admin_mirror_requests') }}" class="btn btn-secondary">Richieste Mirror</a>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Gestione Utenti</a>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+/* Alerts */
+.storage-alerts {
+    margin-bottom: var(--space-lg);
+}
+.alert {
+    padding: var(--space-md);
+    border: 2px solid;
+    margin-bottom: var(--space-sm);
+}
+.alert-warning {
+    border-color: var(--warning);
+    background: rgba(255, 136, 0, 0.1);
+}
+.alert-critical {
+    border-color: var(--error);
+    background: rgba(255, 0, 0, 0.1);
+}
+
+/* Storage sections */
+.storage-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-light);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+.storage-section h2 {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 2px solid var(--border);
+}
+
+/* Disk usage bar */
+.disk-usage-container {
+    margin-bottom: var(--space-lg);
+}
+.disk-usage-bar {
+    height: 24px;
+    background: var(--bg-muted);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+}
+.disk-usage-fill {
+    height: 100%;
+    background: var(--bg-dark);
+    transition: width 0.3s ease;
+}
+.disk-usage-fill.warning {
+    background: var(--warning);
+}
+.disk-usage-fill.critical {
+    background: var(--error);
+}
+.disk-usage-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    margin-top: var(--space-xs);
+    color: var(--text-muted);
+}
+
+/* Stats */
+.disk-stats, .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-md);
+}
+.stat-card {
+    text-align: center;
+    padding: var(--space-md);
+    border: 1px solid var(--border-light);
+}
+.stat-card.stat-warning {
+    border-color: var(--warning);
+}
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.stat-label {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+.stat-detail {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: var(--space-xs);
+}
+
+/* Thresholds */
+.thresholds-info {
+    display: flex;
+    gap: var(--space-lg);
+}
+.threshold-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.threshold-badge.warning {
+    background: var(--warning);
+    color: #000;
+}
+.threshold-badge.critical {
+    background: var(--error);
+    color: #fff;
+}
+
+/* Table */
+.storage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+.storage-table th {
+    text-align: left;
+    padding: var(--space-sm);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--border);
+}
+.storage-table td {
+    padding: var(--space-sm);
+    border-bottom: 1px solid var(--border-light);
+}
+.storage-table .row-warning {
+    background: rgba(255, 136, 0, 0.05);
+}
+.mismatch-badge {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+    background: var(--warning);
+    color: #000;
+    font-weight: 700;
+    font-size: 0.7rem;
+    margin-left: 4px;
+}
+
+/* Admin links */
+.admin-links {
+    margin-top: var(--space-xl);
+}
+.admin-links h3 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--space-md);
+}
+.admin-links .btn {
+    margin-right: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+</style>
+{% endblock %}

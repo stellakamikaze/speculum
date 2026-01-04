@@ -44,6 +44,8 @@ tags:
     description: Data export (requires authentication)
   - name: Ghost
     description: Ghost CMS integration - export and webhooks
+  - name: Storage
+    description: Storage monitoring and management (admin only)
 
 paths:
   /sites:
@@ -699,6 +701,62 @@ paths:
         '501':
           description: Webhook not configured
 
+  /storage:
+    get:
+      tags: [Storage]
+      summary: Get complete storage summary
+      description: Returns disk usage, per-site sizes, and alerts. Admin only.
+      responses:
+        '200':
+          description: Storage summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disk:
+                    $ref: '#/components/schemas/DiskUsage'
+                  sites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SiteStorage'
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StorageAlert'
+                  summary:
+                    type: object
+        '403':
+          description: Admin access required
+
+  /storage/disk:
+    get:
+      tags: [Storage]
+      summary: Get disk usage only
+      description: Returns disk space usage for the mirrors volume.
+      responses:
+        '200':
+          description: Disk usage stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiskUsage'
+
+  /storage/alerts:
+    get:
+      tags: [Storage]
+      summary: Get storage alerts
+      description: Returns active storage alerts based on thresholds.
+      responses:
+        '200':
+          description: List of active alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StorageAlert'
+
 components:
   schemas:
     Site:
@@ -792,4 +850,56 @@ components:
           type: string
           description: Hex color code for UI display
         site_count:
+          type: integer
+
+    DiskUsage:
+      type: object
+      properties:
+        total_bytes:
+          type: integer
+        used_bytes:
+          type: integer
+        free_bytes:
+          type: integer
+        used_percent:
+          type: number
+        free_percent:
+          type: number
+        total_human:
+          type: string
+        used_human:
+          type: string
+        free_human:
+          type: string
+        path:
+          type: string
+
+    SiteStorage:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        actual_size:
+          type: integer
+        size_human:
+          type: string
+        file_count:
+          type: integer
+        size_mismatch:
+          type: boolean
+
+    StorageAlert:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [warning, critical, error]
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        threshold:
           type: integer
