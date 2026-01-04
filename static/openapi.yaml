@@ -1,0 +1,548 @@
+openapi: 3.0.3
+info:
+  title: Speculum API
+  description: |
+    REST API for the Speculum web archive platform.
+
+    Speculum preserves websites and YouTube channels at risk of disappearing,
+    creating permanent mirrors for future generations.
+
+    ## Authentication
+    Most read endpoints are public. Write operations require authentication.
+
+    ## Rate Limiting
+    - General: 200 requests/minute
+    - URL Preview: 10 requests/minute
+  version: 1.0.0
+  contact:
+    name: Speculum
+    url: https://github.com/stellakamikaze/speculum
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Sites
+    description: Archived websites and YouTube channels
+  - name: Search
+    description: Full-text search across the archive
+  - name: Categories
+    description: Site categorization
+  - name: Crawls
+    description: Active crawl monitoring
+  - name: Statistics
+    description: Archive statistics
+  - name: Wayback
+    description: Internet Archive integration
+  - name: Export
+    description: Data export (requires authentication)
+
+paths:
+  /sites:
+    get:
+      tags: [Sites]
+      summary: List all archived sites
+      description: Returns a list of all sites in the archive with their metadata.
+      responses:
+        '200':
+          description: List of sites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Site'
+              example:
+                - id: 1
+                  name: "Example Blog"
+                  url: "https://example.com"
+                  status: "ready"
+                  site_type: "website"
+                  size_bytes: 15728640
+                  created_at: "2024-01-15T10:30:00Z"
+
+  /sites/{site_id}:
+    get:
+      tags: [Sites]
+      summary: Get site details
+      description: Returns detailed information about a specific archived site.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Site ID
+      responses:
+        '200':
+          description: Site details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Site'
+        '404':
+          description: Site not found
+
+  /sites/{site_id}/status:
+    get:
+      tags: [Sites]
+      summary: Get site crawl status
+      description: Returns the current crawl status for polling during archiving.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Crawl status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, crawling, ready, error, dead]
+                  retry_count:
+                    type: integer
+                  error_message:
+                    type: string
+                    nullable: true
+              example:
+                status: "crawling"
+                retry_count: 0
+                error_message: null
+
+  /sites/{site_id}/preview-images:
+    get:
+      tags: [Sites]
+      summary: Get preview images from a site
+      description: Returns random images from the archived site's mirror.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 6
+            maximum: 20
+          description: Number of images to return
+        - name: min_size
+          in: query
+          schema:
+            type: integer
+            default: 10000
+          description: Minimum file size in bytes
+      responses:
+        '200':
+          description: List of image URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  images:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                        filename:
+                          type: string
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Full-text search
+      description: Search across all archived sites and videos using SQLite FTS5.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Search query
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, sites, videos]
+            default: all
+          description: Content type to search
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+          description: Maximum results
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                  total:
+                    type: integer
+                  sites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Site'
+                  videos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Video'
+        '400':
+          description: Query too short
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List all categories
+      description: Returns all categories with site counts.
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+
+  /stats:
+    get:
+      tags: [Statistics]
+      summary: Get archive statistics
+      description: Returns global statistics about the archive.
+      responses:
+        '200':
+          description: Archive statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_sites:
+                    type: integer
+                  ready_sites:
+                    type: integer
+                  total_videos:
+                    type: integer
+                  total_size:
+                    type: integer
+                    description: Total archive size in bytes
+                  crawling_sites:
+                    type: integer
+              example:
+                total_sites: 150
+                ready_sites: 142
+                total_videos: 3500
+                total_size: 107374182400
+                crawling_sites: 2
+
+  /crawls/active:
+    get:
+      tags: [Crawls]
+      summary: Get active crawls
+      description: Returns all currently running crawl operations.
+      responses:
+        '200':
+          description: Active crawls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    site_id:
+                      type: integer
+                    site_name:
+                      type: string
+                    status:
+                      type: string
+                    started_at:
+                      type: string
+                      format: date-time
+
+  /crawls/{site_id}/progress:
+    get:
+      tags: [Crawls]
+      summary: Get crawl progress
+      description: Returns progress information for an active crawl.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Crawl progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files_downloaded:
+                    type: integer
+                  bytes_downloaded:
+                    type: integer
+                  current_file:
+                    type: string
+        '404':
+          description: No active crawl for this site
+
+  /crawls/{site_id}/log:
+    get:
+      tags: [Crawls]
+      summary: Get crawl log
+      description: Returns live log output from an active crawl.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: lines
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: Number of log lines to return
+      responses:
+        '200':
+          description: Log lines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lines:
+                    type: array
+                    items:
+                      type: string
+
+  /preview-url:
+    post:
+      tags: [Sites]
+      summary: Preview URL before archiving
+      description: |
+        Fetches metadata from a URL without full archiving.
+        Uses AI to generate description if available.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                use_ai:
+                  type: boolean
+                  default: true
+            example:
+              url: "https://example.com"
+              use_ai: true
+      responses:
+        '200':
+          description: URL preview data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  status_code:
+                    type: integer
+                  ai_metadata:
+                    type: object
+                    nullable: true
+        '400':
+          description: Invalid URL
+        '429':
+          description: Rate limit exceeded
+
+  /wayback/{site_id}:
+    get:
+      tags: [Wayback]
+      summary: Get Wayback Machine info
+      description: Check if a site has been saved to the Internet Archive.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Wayback Machine status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  wayback_url:
+                    type: string
+                    nullable: true
+                  timestamp:
+                    type: string
+                    nullable: true
+
+  /random-media:
+    get:
+      tags: [Sites]
+      summary: Get random media
+      description: Returns random images from archived sites for gallery display.
+      parameters:
+        - name: count
+          in: query
+          schema:
+            type: integer
+            default: 12
+            maximum: 50
+      responses:
+        '200':
+          description: Random images
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  images:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                        filename:
+                          type: string
+                        site_id:
+                          type: integer
+                        site_name:
+                          type: string
+
+  /ollama/status:
+    get:
+      tags: [Statistics]
+      summary: Check AI service status
+      description: Returns the status of the Ollama AI service for metadata generation.
+      responses:
+        '200':
+          description: Ollama status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  model:
+                    type: string
+                    nullable: true
+
+components:
+  schemas:
+    Site:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, crawling, ready, error, retry_pending, dead]
+        site_type:
+          type: string
+          enum: [website, youtube]
+        crawl_method:
+          type: string
+          enum: [wget, singlefile, ytdlp]
+        size_bytes:
+          type: integer
+          nullable: true
+        category_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_crawl:
+          type: string
+          format: date-time
+          nullable: true
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+        site_id:
+          type: integer
+        video_id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+        upload_date:
+          type: string
+          nullable: true
+        thumbnail_path:
+          type: string
+          nullable: true
+        file_path:
+          type: string
+          nullable: true
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        site_count:
+          type: integer

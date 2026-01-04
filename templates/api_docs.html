@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation — Speculum</title>
+    <meta name="description" content="REST API documentation for Speculum web archive. Search, browse, and access archived websites and YouTube channels programmatically.">
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .swagger-ui .topbar {
+            display: none;
+        }
+        .swagger-ui .info {
+            margin: 30px 0;
+        }
+        .swagger-ui .info .title {
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        }
+        .api-header {
+            background: #000;
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .api-header a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        .api-header nav a {
+            font-weight: 400;
+            font-size: 0.9rem;
+            margin-left: 1.5rem;
+            opacity: 0.8;
+        }
+        .api-header nav a:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header class="api-header">
+        <a href="/">SPECULUM</a>
+        <nav>
+            <a href="/catalog">Catalog</a>
+            <a href="/about">About</a>
+            <a href="https://github.com/stellakamikaze/speculum" target="_blank">GitHub</a>
+        </nav>
+    </header>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-bundle.js"></script>
+    <script>
+        window.onload = function() {
+            SwaggerUIBundle({
+                url: "/static/openapi.yaml",
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                deepLinking: true,
+                showExtensions: true,
+                showCommonExtensions: true
+            });
+        };
+    </script>
+</body>
+</html>

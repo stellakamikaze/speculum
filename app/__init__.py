@@ -654,6 +654,13 @@ def create_app():
         stats = get_dashboard_stats(db, Site, Video)
         return render_template('landing_publishers.html', stats=stats)
 
+    @app.route('/api/docs')
+    @app.route('/docs')
+    @app.route('/swagger')
+    def api_docs():
+        """Interactive API documentation with Swagger UI"""
+        return render_template('api_docs.html')
+
     @app.route('/feed')
     @app.route('/feed.xml')
     @app.route('/rss')
@@ -737,6 +744,8 @@ def create_app():
             ('/for-archivists', 0.7, 'monthly'),
             ('/for-researchers', 0.7, 'monthly'),
             ('/for-publishers', 0.7, 'monthly'),
+            # API documentation
+            ('/docs', 0.6, 'monthly'),
         ]
 
         urls = []
