@@ -2,6 +2,31 @@
 
 {% block title %}{{ site.name }} — Speculum{% endblock %}
 
+{% block meta_description %}{{ site.description[:160] if site.description else 'Archived ' + ('YouTube channel' if site.site_type == 'youtube' else 'website') + ': ' + site.name }}{% endblock %}
+
+{% block og_type %}{% if site.site_type == 'youtube' %}video.other{% else %}website{% endif %}{% endblock %}
+
+{% block og_image %}{% if site.screenshot_path %}{{ url_for('serve_screenshot', site_id=site.id, _external=True) }}{% else %}{{ url_for('static', filename='img/og-default.png', _external=True) }}{% endif %}{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "{% if site.site_type == 'youtube' %}VideoObject{% else %}WebPage{% endif %}",
+    "name": "{{ site.name }}",
+    "description": "{{ site.description|e if site.description else '' }}",
+    "url": "{{ request.url }}",
+    {% if site.screenshot_path %}"thumbnailUrl": "{{ url_for('serve_screenshot', site_id=site.id, _external=True) }}",{% endif %}
+    "dateModified": "{{ site.updated_at.isoformat() if site.updated_at else site.created_at.isoformat() }}",
+    "isPartOf": {
+        "@type": "WebSite",
+        "name": "Speculum",
+        "url": "{{ request.url_root }}"
+    }
+}
+</script>
+{% endblock %}
+
 {% block oembed_discovery %}
 <link rel="alternate" type="application/json+oembed"
       href="{{ url_for('oembed_endpoint', url=request.url, _external=True) }}"

@@ -5,6 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Speculum{% endblock %}</title>
 
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="{% block meta_description %}Speculum archives websites and YouTube channels at risk of disappearing, creating permanent mirrors for future generations.{% endblock %}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='img/og-default.png', _external=True) }}{% endblock %}">
+    <meta property="og:site_name" content="Speculum">
+    <meta property="og:locale" content="{{ g.get('locale', 'en') }}_{{ 'IT' if g.get('locale') == 'it' else 'US' }}">
+
+    <!-- X (formerly Twitter) Card - meta tags still use twitter: prefix for compatibility -->
+    <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+    <meta name="twitter:title" content="{{ self.og_title() }}">
+    <meta name="twitter:description" content="{{ self.og_description() }}">
+    <meta name="twitter:image" content="{{ self.og_image() }}">
+
+    <!-- JSON-LD Organization Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Speculum",
+        "description": "Web archive for preserving websites and YouTube channels",
+        "url": "{{ request.url_root }}",
+        "logo": "{{ url_for('static', filename='img/logo.png', _external=True) }}",
+        "sameAs": [
+            "https://github.com/stellakamikaze/speculum"
+        ]
+    }
+    </script>
+    {% block json_ld %}{% endblock %}
+
     <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 

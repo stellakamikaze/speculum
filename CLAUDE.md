@@ -128,10 +128,12 @@ bd close <id>     # Complete task
 Checklist per il lancio pubblico (Epic 6):
 
 ### SEO/AEO Optimization
-1. **Sitemap + robots.txt** - Generazione automatica
-2. **Meta tags** - Open Graph, Twitter Cards, canonical URLs
+1. **Sitemap + robots.txt** - Generazione automatica ✅
+2. **Meta tags** - Open Graph, X Cards (twitter: prefix), canonical URLs
 3. **Schema markup** - JSON-LD per Organization, FAQPage, HowTo
 4. **Cache headers** - ETag, max-age per static assets
+
+> **Nota**: X (ex-Twitter) mantiene retrocompatibilità con i meta tag `twitter:*`
 
 ### Landing Pages
 - Target: archivisti, ricercatori, librerie indipendenti
