@@ -2380,6 +2380,171 @@ Allow: /search
             download_name=filename
         )
 
+    # ==================== COLLECTIONS ====================
+
+    @app.route('/collections')
+    def collections_list():
+        """Public list of collections"""
+        from app.models import Collection
+        collections = Collection.query.filter_by(is_public=True).order_by(
+            Collection.is_featured.desc(),
+            Collection.updated_at.desc()
+        ).all()
+        return render_template('collections.html', collections=collections)
+
+    @app.route('/collections/<slug>')
+    def collection_detail(slug):
+        """Public view of a single collection"""
+        from app.models import Collection
+        collection = Collection.query.filter_by(slug=slug, is_public=True).first_or_404()
+        return render_template('collection_detail.html', collection=collection)
+
+    @app.route('/admin/collections')
+    @admin_required
+    def admin_collections():
+        """Admin list of all collections"""
+        from app.models import Collection
+        collections = Collection.query.order_by(Collection.updated_at.desc()).all()
+        return render_template('admin_collections.html', collections=collections)
+
+    @app.route('/admin/collections/new', methods=['GET', 'POST'])
+    @admin_required
+    def admin_collection_new():
+        """Create new collection"""
+        from app.models import Collection
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Nome richiesto', 'error')
+                return redirect(url_for('admin_collection_new'))
+
+            slug = Collection.generate_slug(name)
+            # Ensure unique slug
+            base_slug = slug
+            counter = 1
+            while Collection.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            collection = Collection(
+                name=name,
+                slug=slug,
+                description=request.form.get('description', '').strip() or None,
+                cover_image=request.form.get('cover_image', '').strip() or None,
+                is_featured=request.form.get('is_featured') == 'on',
+                is_public=request.form.get('is_public', 'on') == 'on',
+                curator_name=request.form.get('curator_name', '').strip() or None,
+                curator_bio=request.form.get('curator_bio', '').strip() or None
+            )
+            db.session.add(collection)
+            db.session.commit()
+
+            flash(f'Collezione "{name}" creata', 'success')
+            return redirect(url_for('admin_collection_edit', collection_id=collection.id))
+
+        return render_template('admin_collection_form.html', collection=None)
+
+    @app.route('/admin/collections/<int:collection_id>', methods=['GET', 'POST'])
+    @admin_required
+    def admin_collection_edit(collection_id):
+        """Edit collection"""
+        from app.models import Collection
+
+        collection = Collection.query.get_or_404(collection_id)
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Nome richiesto', 'error')
+                return redirect(url_for('admin_collection_edit', collection_id=collection_id))
+
+            collection.name = name
+            collection.description = request.form.get('description', '').strip() or None
+            collection.cover_image = request.form.get('cover_image', '').strip() or None
+            collection.is_featured = request.form.get('is_featured') == 'on'
+            collection.is_public = request.form.get('is_public', 'on') == 'on'
+            collection.curator_name = request.form.get('curator_name', '').strip() or None
+            collection.curator_bio = request.form.get('curator_bio', '').strip() or None
+
+            db.session.commit()
+            flash('Collezione aggiornata', 'success')
+            return redirect(url_for('admin_collection_edit', collection_id=collection_id))
+
+        sites = Site.query.filter_by(status='ready').order_by(Site.name).all()
+        return render_template('admin_collection_form.html', collection=collection, sites=sites)
+
+    @app.route('/admin/collections/<int:collection_id>/delete', methods=['POST'])
+    @admin_required
+    def admin_collection_delete(collection_id):
+        """Delete collection"""
+        from app.models import Collection
+
+        collection = Collection.query.get_or_404(collection_id)
+        name = collection.name
+        db.session.delete(collection)
+        db.session.commit()
+
+        flash(f'Collezione "{name}" eliminata', 'success')
+        return redirect(url_for('admin_collections'))
+
+    @app.route('/api/collections')
+    def api_collections():
+        """API: List public collections"""
+        from app.models import Collection
+        collections = Collection.query.filter_by(is_public=True).order_by(
+            Collection.is_featured.desc(),
+            Collection.updated_at.desc()
+        ).all()
+        return jsonify([c.to_dict() for c in collections])
+
+    @app.route('/api/collections/<int:collection_id>')
+    def api_collection_detail(collection_id):
+        """API: Get collection with sites"""
+        from app.models import Collection
+        collection = Collection.query.get_or_404(collection_id)
+        if not collection.is_public:
+            return jsonify({'error': 'Collection not found'}), 404
+        return jsonify(collection.to_dict(include_sites=True))
+
+    @app.route('/api/collections/<int:collection_id>/sites', methods=['POST'])
+    @csrf.exempt
+    @admin_required
+    def api_collection_add_site(collection_id):
+        """API: Add site to collection"""
+        from app.models import Collection
+
+        collection = Collection.query.get_or_404(collection_id)
+        data = request.get_json()
+        site_id = data.get('site_id')
+
+        if not site_id:
+            return jsonify({'error': 'site_id required'}), 400
+
+        site = Site.query.get_or_404(site_id)
+
+        if site not in collection.sites:
+            collection.sites.append(site)
+            db.session.commit()
+
+        return jsonify({'success': True, 'site_count': len(collection.sites)})
+
+    @app.route('/api/collections/<int:collection_id>/sites/<int:site_id>', methods=['DELETE'])
+    @csrf.exempt
+    @admin_required
+    def api_collection_remove_site(collection_id, site_id):
+        """API: Remove site from collection"""
+        from app.models import Collection
+
+        collection = Collection.query.get_or_404(collection_id)
+        site = Site.query.get_or_404(site_id)
+
+        if site in collection.sites:
+            collection.sites.remove(site)
+            db.session.commit()
+
+        return jsonify({'success': True, 'site_count': len(collection.sites)})
+
     @app.route('/api/export/sites')
     @edit_required
     def api_export_sites():

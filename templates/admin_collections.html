@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Collezioni — Admin — Speculum{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Gestione Collezioni</h1>
+    <p>Crea e gestisci percorsi tematici</p>
+</div>
+
+<div class="admin-actions">
+    <a href="{{ url_for('admin_collection_new') }}" class="btn btn-primary">+ Nuova Collezione</a>
+    <a href="{{ url_for('collections_list') }}" class="btn btn-secondary" target="_blank">Visualizza Pubbliche</a>
+</div>
+
+{% if collections %}
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Nome</th>
+            <th>Siti</th>
+            <th>Stato</th>
+            <th>Aggiornata</th>
+            <th>Azioni</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for coll in collections %}
+        <tr>
+            <td>
+                <strong>{{ coll.name }}</strong>
+                {% if coll.is_featured %}<span class="badge badge-featured">In Evidenza</span>{% endif %}
+                <br>
+                <span class="text-muted small">/collections/{{ coll.slug }}</span>
+            </td>
+            <td>{{ coll.sites|length }}</td>
+            <td>
+                {% if coll.is_public %}
+                <span class="badge badge-success">Pubblica</span>
+                {% else %}
+                <span class="badge badge-warning">Bozza</span>
+                {% endif %}
+            </td>
+            <td>{{ coll.updated_at.strftime('%d/%m/%Y') if coll.updated_at else '-' }}</td>
+            <td class="actions">
+                <a href="{{ url_for('admin_collection_edit', collection_id=coll.id) }}" class="btn btn-small">Modifica</a>
+                {% if coll.is_public %}
+                <a href="{{ url_for('collection_detail', slug=coll.slug) }}" class="btn btn-small" target="_blank">Vedi</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>Nessuna collezione creata.</p>
+    <a href="{{ url_for('admin_collection_new') }}" class="btn btn-primary">Crea la prima collezione</a>
+</div>
+{% endif %}
+
+<div class="admin-links">
+    <h3>Altre Funzioni Admin</h3>
+    <a href="{{ url_for('admin_storage') }}" class="btn btn-secondary">Storage</a>
+    <a href="{{ url_for('admin_export') }}" class="btn btn-secondary">Export</a>
+    <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">Utenti</a>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.admin-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+}
+.admin-table th,
+.admin-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+.admin-table th {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #666);
+}
+.admin-table td.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+}
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+.badge-featured {
+    background: #000;
+    color: #fff;
+    margin-left: 0.5rem;
+}
+.text-muted {
+    color: var(--text-muted, #666);
+}
+.small {
+    font-size: 0.75rem;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--bg-muted, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+}
+.admin-links {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color, #ddd);
+}
+.admin-links h3 {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.admin-links .btn {
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{{ collection.name }} — Collezioni — Speculum{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<header class="page-header collection-header">
+    <div class="page-label">Collezione</div>
+    <h1 class="page-title">{{ collection.name }}</h1>
+    {% if collection.curator_name %}
+    <p class="curator-info">A cura di <strong>{{ collection.curator_name }}</strong></p>
+    {% endif %}
+    <div class="page-actions">
+        <a href="{{ url_for('collections_list') }}" class="btn btn-large">Tutte le Collezioni</a>
+    </div>
+</header>
+
+{% if collection.cover_image %}
+<div class="collection-hero" style="background-image: url('{{ collection.cover_image }}')"></div>
+{% endif %}
+
+{% if collection.description %}
+<div class="collection-description">
+    <p>{{ collection.description }}</p>
+</div>
+{% endif %}
+
+{% if collection.curator_bio %}
+<div class="curator-bio">
+    <h3>Il Curatore</h3>
+    <p>{{ collection.curator_bio }}</p>
+</div>
+{% endif %}
+
+<div class="section-divider"></div>
+
+<!-- Sites in Collection -->
+<section class="collection-sites">
+    <div class="section-header">
+        <h2 class="section-title">Siti nella Collezione</h2>
+        <span class="site-count">{{ collection.sites|length }} siti</span>
+    </div>
+
+    {% if collection.sites %}
+    <div class="sites-grid">
+        {% for site in collection.sites %}
+        <a href="{{ url_for('site_detail', site_id=site.id) }}" class="site-card">
+            {% if site.screenshot_path %}
+            <div class="site-thumb" style="background-image: url('/screenshots/{{ site.screenshot_path }}')"></div>
+            {% else %}
+            <div class="site-thumb placeholder"></div>
+            {% endif %}
+            <div class="site-info">
+                <h3 class="site-name">{{ site.name }}</h3>
+                {% if site.description %}
+                <p class="site-desc">{{ site.description|truncate(100) }}</p>
+                {% endif %}
+                <div class="site-meta">
+                    {% if site.category %}
+                    <span class="category">{{ site.category.name }}</span>
+                    {% endif %}
+                    <span class="site-type">{{ site.site_type }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Nessun sito in questa collezione.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block head %}
+<style>
+.collection-header {
+    margin-bottom: 1rem;
+}
+.curator-info {
+    color: var(--text-muted, #666);
+    margin-top: 0.5rem;
+}
+.collection-hero {
+    width: 100%;
+    height: 300px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--border-color, #000);
+    margin-bottom: 2rem;
+}
+.collection-description {
+    max-width: 700px;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+.curator-bio {
+    background: var(--bg-muted, #f5f5f5);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color, #000);
+    max-width: 600px;
+    margin-bottom: 2rem;
+}
+.curator-bio h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.curator-bio p {
+    margin: 0;
+    color: var(--text-muted, #666);
+}
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem 0 1rem 0;
+}
+.section-title {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted, #666);
+    margin: 0;
+}
+.site-count {
+    font-size: 0.75rem;
+    color: var(--text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.sites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+.site-card {
+    display: block;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #000);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.site-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 4px 4px 0 var(--border-color, #000);
+}
+.site-thumb {
+    height: 140px;
+    background-size: cover;
+    background-position: center top;
+    border-bottom: 1px solid var(--border-color, #000);
+}
+.site-thumb.placeholder {
+    background: var(--bg-muted, #f5f5f5);
+}
+.site-info {
+    padding: 1rem;
+}
+.site-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+.site-desc {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-muted, #666);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+.site-meta {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted, #666);
+}
+</style>
+{% endblock %}

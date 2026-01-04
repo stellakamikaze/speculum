@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}{% if collection %}Modifica{% else %}Nuova{% endif %} Collezione — Admin — Speculum{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if collection %}Modifica Collezione{% else %}Nuova Collezione{% endif %}</h1>
+    <p>{% if collection %}{{ collection.name }}{% else %}Crea un nuovo percorso tematico{% endif %}</p>
+</div>
+
+<form method="POST" class="collection-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-section">
+        <h2>Informazioni Base</h2>
+
+        <div class="form-group">
+            <label for="name">Nome *</label>
+            <input type="text" id="name" name="name" value="{{ collection.name if collection else '' }}" required>
+        </div>
+
+        {% if collection %}
+        <div class="form-group">
+            <label>Slug</label>
+            <input type="text" value="{{ collection.slug }}" disabled>
+            <span class="help-text">URL: /collections/{{ collection.slug }}</span>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="description">Descrizione</label>
+            <textarea id="description" name="description" rows="4">{{ collection.description if collection else '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="cover_image">Immagine di Copertina (URL)</label>
+            <input type="url" id="cover_image" name="cover_image" value="{{ collection.cover_image if collection else '' }}" placeholder="https://...">
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Curatore</h2>
+
+        <div class="form-group">
+            <label for="curator_name">Nome Curatore</label>
+            <input type="text" id="curator_name" name="curator_name" value="{{ collection.curator_name if collection else '' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="curator_bio">Bio Curatore</label>
+            <textarea id="curator_bio" name="curator_bio" rows="3">{{ collection.curator_bio if collection else '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Opzioni</h2>
+
+        <div class="form-group checkbox">
+            <label>
+                <input type="checkbox" name="is_public" {% if not collection or collection.is_public %}checked{% endif %}>
+                Pubblica
+            </label>
+            <span class="help-text">Se non pubblica, visibile solo agli admin</span>
+        </div>
+
+        <div class="form-group checkbox">
+            <label>
+                <input type="checkbox" name="is_featured" {% if collection and collection.is_featured %}checked{% endif %}>
+                In Evidenza
+            </label>
+            <span class="help-text">Mostrata nella sezione in evidenza della pagina collezioni</span>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{% if collection %}Salva Modifiche{% else %}Crea Collezione{% endif %}</button>
+        <a href="{{ url_for('admin_collections') }}" class="btn btn-secondary">Annulla</a>
+    </div>
+</form>
+
+{% if collection %}
+<div class="section-divider"></div>
+
+<!-- Sites Management -->
+<div class="sites-section">
+    <h2>Siti nella Collezione</h2>
+
+    <div class="current-sites" id="currentSites">
+        {% if collection.sites %}
+        {% for site in collection.sites %}
+        <div class="site-chip" data-site-id="{{ site.id }}">
+            <span class="site-name">{{ site.name }}</span>
+            <button type="button" class="remove-btn" onclick="removeSite({{ site.id }})">&times;</button>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="empty-text" id="emptyText">Nessun sito aggiunto. Usa il selettore sotto per aggiungere siti.</p>
+        {% endif %}
+    </div>
+
+    <div class="add-site-form">
+        <label for="siteSelect">Aggiungi Sito</label>
+        <div class="add-site-row">
+            <select id="siteSelect">
+                <option value="">Seleziona un sito...</option>
+                {% for site in sites %}
+                {% if site not in collection.sites %}
+                <option value="{{ site.id }}">{{ site.name }} ({{ site.site_type }})</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <button type="button" class="btn btn-primary" onclick="addSite()">Aggiungi</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Section -->
+<div class="danger-zone">
+    <h3>Zona Pericolosa</h3>
+    <form method="POST" action="{{ url_for('admin_collection_delete', collection_id=collection.id) }}" onsubmit="return confirm('Sei sicuro di voler eliminare questa collezione?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger">Elimina Collezione</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block head %}
+<style>
+.collection-form {
+    max-width: 600px;
+}
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+.form-section h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+}
+.form-group {
+    margin-bottom: 1.25rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+.form-group.checkbox label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+}
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color, #000);
+    background: var(--card-bg, #fff);
+    font-family: inherit;
+    font-size: 1rem;
+}
+.form-group input:disabled {
+    background: var(--bg-muted, #f5f5f5);
+    color: var(--text-muted, #666);
+}
+.help-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #666);
+}
+.form-actions {
+    display: flex;
+    gap: 1rem;
+}
+.sites-section {
+    margin-top: 2rem;
+}
+.sites-section h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+.current-sites {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    min-height: 40px;
+    padding: 1rem;
+    background: var(--bg-muted, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+}
+.site-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #000);
+}
+.site-chip .remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--text-muted, #666);
+}
+.site-chip .remove-btn:hover {
+    color: #d00;
+}
+.empty-text {
+    color: var(--text-muted, #666);
+    font-style: italic;
+    margin: 0;
+}
+.add-site-form {
+    max-width: 400px;
+}
+.add-site-row {
+    display: flex;
+    gap: 0.5rem;
+}
+.add-site-row select {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color, #000);
+}
+.danger-zone {
+    margin-top: 3rem;
+    padding: 1.5rem;
+    border: 2px solid #d00;
+    background: #fff5f5;
+}
+.danger-zone h3 {
+    margin: 0 0 1rem 0;
+    color: #d00;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+}
+.btn-danger {
+    background: #d00;
+    color: #fff;
+    border-color: #d00;
+}
+.btn-danger:hover {
+    background: #b00;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+{% if collection %}
+<script>
+const collectionId = {{ collection.id }};
+
+function addSite() {
+    const select = document.getElementById('siteSelect');
+    const siteId = select.value;
+    if (!siteId) return;
+
+    const siteName = select.options[select.selectedIndex].text;
+
+    fetch(`/api/collections/${collectionId}/sites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site_id: parseInt(siteId) })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Add chip
+            const container = document.getElementById('currentSites');
+            const emptyText = document.getElementById('emptyText');
+            if (emptyText) emptyText.remove();
+
+            const chip = document.createElement('div');
+            chip.className = 'site-chip';
+            chip.dataset.siteId = siteId;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'site-name';
+            nameSpan.textContent = siteName.split(' (')[0];
+            chip.appendChild(nameSpan);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = '\u00d7';
+            removeBtn.onclick = function() { removeSite(siteId); };
+            chip.appendChild(removeBtn);
+
+            container.appendChild(chip);
+
+            // Remove from select
+            select.remove(select.selectedIndex);
+            select.value = '';
+        }
+    });
+}
+
+function removeSite(siteId) {
+    fetch(`/api/collections/${collectionId}/sites/${siteId}`, {
+        method: 'DELETE'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Remove chip
+            const chip = document.querySelector(`.site-chip[data-site-id="${siteId}"]`);
+            if (chip) {
+                const siteName = chip.querySelector('.site-name').textContent;
+                chip.remove();
+
+                // Add back to select
+                const select = document.getElementById('siteSelect');
+                const option = document.createElement('option');
+                option.value = siteId;
+                option.textContent = siteName;
+                select.appendChild(option);
+            }
+
+            // Show empty text if no more sites
+            const container = document.getElementById('currentSites');
+            if (!container.querySelector('.site-chip')) {
+                const emptyP = document.createElement('p');
+                emptyP.className = 'empty-text';
+                emptyP.id = 'emptyText';
+                emptyP.textContent = 'Nessun sito aggiunto. Usa il selettore sotto per aggiungere siti.';
+                container.appendChild(emptyP);
+            }
+        }
+    });
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Collezioni — Speculum{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<header class="page-header">
+    <div class="page-label">02. Percorsi</div>
+    <h1 class="page-title">Collezioni<br>Tematiche</h1>
+    <div class="page-actions">
+        <a href="{{ url_for('catalog') }}" class="btn btn-large">Catalogo</a>
+        <a href="{{ url_for('about') }}" class="btn btn-large">Info</a>
+    </div>
+</header>
+
+{% if collections %}
+<!-- Featured Collections -->
+{% set featured = collections|selectattr('is_featured')|list %}
+{% if featured %}
+<section class="featured-collections">
+    <h2 class="section-title">In Evidenza</h2>
+    <div class="collections-grid featured">
+        {% for coll in featured %}
+        <a href="{{ url_for('collection_detail', slug=coll.slug) }}" class="collection-card featured">
+            {% if coll.cover_image %}
+            <div class="collection-cover" style="background-image: url('{{ coll.cover_image }}')"></div>
+            {% else %}
+            <div class="collection-cover placeholder"></div>
+            {% endif %}
+            <div class="collection-info">
+                <h3 class="collection-name">{{ coll.name }}</h3>
+                {% if coll.description %}
+                <p class="collection-desc">{{ coll.description|truncate(120) }}</p>
+                {% endif %}
+                <div class="collection-meta">
+                    <span class="site-count">{{ coll.sites|length }} siti</span>
+                    {% if coll.curator_name %}
+                    <span class="curator">a cura di {{ coll.curator_name }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+<div class="section-divider"></div>
+{% endif %}
+
+<!-- All Collections -->
+<section class="all-collections">
+    <h2 class="section-title">Tutte le Collezioni</h2>
+    <div class="collections-grid">
+        {% for coll in collections %}
+        {% if not coll.is_featured %}
+        <a href="{{ url_for('collection_detail', slug=coll.slug) }}" class="collection-card">
+            {% if coll.cover_image %}
+            <div class="collection-cover" style="background-image: url('{{ coll.cover_image }}')"></div>
+            {% else %}
+            <div class="collection-cover placeholder"></div>
+            {% endif %}
+            <div class="collection-info">
+                <h3 class="collection-name">{{ coll.name }}</h3>
+                {% if coll.description %}
+                <p class="collection-desc">{{ coll.description|truncate(80) }}</p>
+                {% endif %}
+                <div class="collection-meta">
+                    <span class="site-count">{{ coll.sites|length }} siti</span>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<div class="empty-state">
+    <p>Nessuna collezione disponibile.</p>
+    <p class="text-muted">Le collezioni sono percorsi tematici curati attraverso i siti archiviati.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block head %}
+<style>
+.collections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.collections-grid.featured {
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+.collection-card {
+    display: block;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #000);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.collection-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 4px 4px 0 var(--border-color, #000);
+}
+.collection-cover {
+    height: 160px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid var(--border-color, #000);
+}
+.collection-cover.placeholder {
+    background: linear-gradient(135deg, var(--bg-muted, #f5f5f5) 25%, transparent 25%),
+                linear-gradient(225deg, var(--bg-muted, #f5f5f5) 25%, transparent 25%),
+                linear-gradient(45deg, var(--bg-muted, #f5f5f5) 25%, transparent 25%),
+                linear-gradient(315deg, var(--bg-muted, #f5f5f5) 25%, var(--card-bg, #fff) 25%);
+    background-size: 20px 20px;
+}
+.collection-card.featured .collection-cover {
+    height: 200px;
+}
+.collection-info {
+    padding: 1rem;
+}
+.collection-name {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+}
+.collection-card.featured .collection-name {
+    font-size: 1.5rem;
+}
+.collection-desc {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-muted, #666);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+.collection-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.section-title {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted, #666);
+    margin: 2rem 0 0 0;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted, #666);
+}
+</style>
+{% endblock %}

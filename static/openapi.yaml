@@ -46,6 +46,8 @@ tags:
     description: Ghost CMS integration - export and webhooks
   - name: Storage
     description: Storage monitoring and management (admin only)
+  - name: Collections
+    description: Curated thematic collections of archived sites
 
 paths:
   /sites:
@@ -757,6 +759,105 @@ paths:
                 items:
                   $ref: '#/components/schemas/StorageAlert'
 
+  /collections:
+    get:
+      tags: [Collections]
+      summary: List public collections
+      description: Returns all public curated collections of archived sites.
+      responses:
+        '200':
+          description: List of collections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Collection'
+
+  /collections/{id}:
+    get:
+      tags: [Collections]
+      summary: Get collection details
+      description: Returns a collection with all its sites.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Collection with sites
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionWithSites'
+        '404':
+          description: Collection not found
+
+  /collections/{id}/sites:
+    post:
+      tags: [Collections]
+      summary: Add site to collection
+      description: Adds a site to an existing collection. Requires admin authentication.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [site_id]
+              properties:
+                site_id:
+                  type: integer
+      responses:
+        '200':
+          description: Site added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  site_count:
+                    type: integer
+
+  /collections/{id}/sites/{site_id}:
+    delete:
+      tags: [Collections]
+      summary: Remove site from collection
+      description: Removes a site from a collection. Requires admin authentication.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Site removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  site_count:
+                    type: integer
+
 components:
   schemas:
     Site:
@@ -903,3 +1004,44 @@ components:
           format: date-time
         threshold:
           type: integer
+
+    Collection:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        cover_image:
+          type: string
+          format: uri
+        is_featured:
+          type: boolean
+        is_public:
+          type: boolean
+        curator_name:
+          type: string
+        curator_bio:
+          type: string
+        site_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CollectionWithSites:
+      allOf:
+        - $ref: '#/components/schemas/Collection'
+        - type: object
+          properties:
+            sites:
+              type: array
+              items:
+                $ref: '#/components/schemas/Site'

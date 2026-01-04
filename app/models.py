@@ -123,6 +123,13 @@ site_tags = db.Table('site_tags',
     db.Column('tag_id', db.Integer, db.ForeignKey('tags.id'), primary_key=True)
 )
 
+# Many-to-many association table for Collection <-> Site
+collection_sites = db.Table('collection_sites',
+    db.Column('collection_id', db.Integer, db.ForeignKey('collections.id'), primary_key=True),
+    db.Column('site_id', db.Integer, db.ForeignKey('sites.id'), primary_key=True),
+    db.Column('position', db.Integer, default=0)  # For ordering sites within a collection
+)
+
 
 class Tag(db.Model):
     """Tags for flexible site categorization (many-to-many)"""
@@ -140,6 +147,62 @@ class Tag(db.Model):
             'color': self.color,
             'site_count': len(self.sites) if hasattr(self, 'sites') else 0
         }
+
+
+class Collection(db.Model):
+    """Curated collections of sites for thematic paths"""
+    __tablename__ = 'collections'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, index=True)
+    slug = db.Column(db.String(200), unique=True, index=True)  # URL-friendly name
+    description = db.Column(db.Text)
+    cover_image = db.Column(db.String(500))  # Path to cover image
+
+    # Display options
+    is_featured = db.Column(db.Boolean, default=False, index=True)
+    is_public = db.Column(db.Boolean, default=True, index=True)
+
+    # Curator info
+    curator_name = db.Column(db.String(100))
+    curator_bio = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Many-to-many relationship with sites
+    sites = db.relationship('Site', secondary=collection_sites, lazy='selectin',
+                           backref=db.backref('collections', lazy='selectin'),
+                           order_by='collection_sites.c.position')
+
+    def to_dict(self, include_sites=False):
+        result = {
+            'id': self.id,
+            'name': self.name,
+            'slug': self.slug,
+            'description': self.description,
+            'cover_image': self.cover_image,
+            'is_featured': self.is_featured,
+            'is_public': self.is_public,
+            'curator_name': self.curator_name,
+            'curator_bio': self.curator_bio,
+            'site_count': len(self.sites),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+        if include_sites:
+            result['sites'] = [s.to_dict() for s in self.sites]
+        return result
+
+    @staticmethod
+    def generate_slug(name):
+        """Generate URL-friendly slug from name"""
+        import re
+        slug = name.lower()
+        slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+        slug = re.sub(r'[\s_]+', '-', slug)
+        slug = re.sub(r'-+', '-', slug)
+        return slug.strip('-')
 
 
 class Site(db.Model):
