@@ -639,6 +639,101 @@ def create_app():
 
         return Response(feed_xml, mimetype='application/atom+xml')
 
+    @app.route('/sitemap.xml')
+    def sitemap():
+        """Dynamic XML sitemap for SEO"""
+        from flask import Response
+        from datetime import datetime
+
+        base_url = request.url_root.rstrip('/')
+
+        # Static pages with their priorities and change frequencies
+        static_pages = [
+            ('/', 1.0, 'daily'),
+            ('/catalog', 0.9, 'daily'),
+            ('/search', 0.8, 'weekly'),
+            ('/request-mirror', 0.7, 'monthly'),
+            ('/about', 0.5, 'monthly'),
+            ('/categories', 0.6, 'weekly'),
+            ('/feed', 0.4, 'daily'),
+        ]
+
+        urls = []
+
+        # Add static pages
+        for path, priority, changefreq in static_pages:
+            urls.append(f'''  <url>
+    <loc>{base_url}{path}</loc>
+    <changefreq>{changefreq}</changefreq>
+    <priority>{priority}</priority>
+  </url>''')
+
+        # Add all ready sites
+        ready_sites = Site.query.filter_by(status='ready').order_by(Site.updated_at.desc()).all()
+        for site in ready_sites:
+            lastmod = (site.updated_at or site.created_at or datetime.utcnow()).strftime('%Y-%m-%d')
+            urls.append(f'''  <url>
+    <loc>{base_url}/sites/{site.id}</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>''')
+
+            # Add video pages for YouTube channels
+            if site.site_type == 'youtube' and site.videos:
+                urls.append(f'''  <url>
+    <loc>{base_url}/videos/{site.id}</loc>
+    <lastmod>{lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>''')
+
+        # Add category pages
+        categories = Category.query.all()
+        for cat in categories:
+            urls.append(f'''  <url>
+    <loc>{base_url}/categories?filter={cat.id}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>''')
+
+        sitemap_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{chr(10).join(urls)}
+</urlset>'''
+
+        return Response(sitemap_xml, mimetype='application/xml')
+
+    @app.route('/robots.txt')
+    def robots():
+        """Robots.txt with sitemap reference"""
+        base_url = request.url_root.rstrip('/')
+
+        robots_txt = f'''# Speculum Web Archive - robots.txt
+# https://github.com/stellakamikaze/speculum
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: {base_url}/sitemap.xml
+
+# Disallow admin and API endpoints
+Disallow: /admin/
+Disallow: /api/
+Disallow: /login
+Disallow: /logout
+
+# Allow search engines to index mirrors
+Allow: /mirror/
+Allow: /sites/
+Allow: /videos/
+Allow: /catalog
+Allow: /search
+'''
+
+        return Response(robots_txt, mimetype='text/plain')
+
     @app.route('/sites')
     def sites_list():
         """List all sites"""
