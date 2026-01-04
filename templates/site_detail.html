@@ -192,6 +192,12 @@
                 Galleria media
             </a>
             {% endif %}
+
+            {% if site.status == 'ready' %}
+            <button type="button" class="btn btn-secondary" onclick="exportWARC()" title="Esporta in formato WARC (ISO 28500)">
+                Export WARC
+            </button>
+            {% endif %}
         </div>
     </section>
 
@@ -413,6 +419,42 @@
 
         html += '<button type="button" class="btn-add-tag" onclick="showAddTagModal()" title="Aggiungi tag">+</button>';
         container.innerHTML = html;
+    }
+
+    // WARC Export
+    function exportWARC() {
+        if (!confirm('Creare un file WARC per questo sito? Potrebbe richiedere alcuni minuti per siti grandi.')) {
+            return;
+        }
+
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Esportando...';
+        btn.disabled = true;
+
+        fetch(`/api/export/warc/${siteId}`, {
+            method: 'POST'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`WARC creato con successo!\n\nFile: ${data.warc.filename}\nDimensione: ${data.warc.size_human}\nRecord: ${data.warc.record_count}`);
+                // Offer download
+                if (confirm('Vuoi scaricare il file WARC?')) {
+                    window.location.href = `/api/export/warc/download/${data.warc.filename}`;
+                }
+            } else {
+                alert('Errore: ' + (data.error || 'Impossibile creare WARC'));
+            }
+        })
+        .catch(err => {
+            console.error('WARC export error:', err);
+            alert('Errore durante l\'esportazione WARC');
+        })
+        .finally(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        });
     }
     </script>
     

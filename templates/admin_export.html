@@ -61,6 +61,22 @@
     <div id="importResult" class="import-result" style="display:none;"></div>
 </div>
 
+<!-- WARC Export Section -->
+<div class="export-form-container">
+    <h2>Export WARC (ISO 28500)</h2>
+    <p class="section-description">Formato standard per archivi web (Internet Archive, Library of Congress)</p>
+
+    <div class="export-notes">
+        <p>L'export WARC e disponibile dalla pagina dettaglio di ogni sito pronto.</p>
+        <p>I file WARC creati sono salvati in <code>/mirrors/_warc/</code></p>
+    </div>
+
+    <div id="warc-files-list">
+        <h3>File WARC disponibili</h3>
+        <div id="warc-files-container">Caricamento...</div>
+    </div>
+</div>
+
 <!-- Ghost Export Section -->
 <div class="export-form-container">
     <h2>Export per Ghost CMS</h2>
@@ -206,6 +222,34 @@
     margin: 0.5rem 0;
     padding-left: 1.5rem;
 }
+.warc-files-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.warc-files-list li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color, #ddd);
+}
+.warc-files-list li:last-child {
+    border-bottom: none;
+}
+.warc-file-link {
+    font-family: monospace;
+    flex: 1;
+}
+.warc-file-size,
+.warc-file-date {
+    color: var(--text-muted, #666);
+    font-size: 0.875rem;
+}
+.empty-text {
+    color: var(--text-muted, #666);
+    font-style: italic;
+}
 </style>
 {% endblock %}
 
@@ -335,5 +379,32 @@ document.getElementById('importForm').addEventListener('submit', function(e) {
 
     reader.readAsText(file);
 });
+
+// Load WARC files list
+fetch('/api/export/warc/list')
+    .then(r => r.json())
+    .then(files => {
+        const container = document.getElementById('warc-files-container');
+        if (files.length === 0) {
+            container.innerHTML = '<p class="empty-text">Nessun file WARC disponibile</p>';
+            return;
+        }
+
+        let html = '<ul class="warc-files-list">';
+        files.forEach(file => {
+            html += `<li>
+                <a href="/api/export/warc/download/${encodeURIComponent(file.filename)}" class="warc-file-link">
+                    ${file.filename}
+                </a>
+                <span class="warc-file-size">${file.size_human}</span>
+                <span class="warc-file-date">${file.created.split('T')[0]}</span>
+            </li>`;
+        });
+        html += '</ul>';
+        container.innerHTML = html;
+    })
+    .catch(err => {
+        document.getElementById('warc-files-container').innerHTML = '<p class="error">Errore caricamento file WARC</p>';
+    });
 </script>
 {% endblock %}

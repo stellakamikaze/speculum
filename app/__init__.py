@@ -2327,6 +2327,59 @@ Allow: /search
         data = get_storage_summary()
         return render_template('admin_storage.html', **data)
 
+    # ==================== WARC EXPORT ====================
+
+    @app.route('/api/export/warc/<int:site_id>', methods=['POST'])
+    @csrf.exempt
+    @admin_required
+    def api_export_warc(site_id):
+        """API: Export site to WARC format (ISO 28500)"""
+        from app.warc import export_site_to_warc
+
+        site = Site.query.get_or_404(site_id)
+
+        if site.status != 'ready':
+            return jsonify({'error': 'Site must be ready for WARC export'}), 400
+
+        result = export_site_to_warc(site)
+
+        if result is None:
+            return jsonify({'error': 'Failed to create WARC file'}), 500
+
+        return jsonify({
+            'success': True,
+            'warc': result
+        })
+
+    @app.route('/api/export/warc/list')
+    @admin_required
+    def api_list_warc():
+        """API: List available WARC exports"""
+        from app.warc import list_warc_files
+        return jsonify(list_warc_files())
+
+    @app.route('/api/export/warc/download/<path:filename>')
+    @admin_required
+    def api_download_warc(filename):
+        """API: Download a WARC file"""
+        import os
+        warc_dir = os.path.join(os.environ.get('MIRRORS_PATH', '/mirrors'), '_warc')
+        file_path = os.path.join(warc_dir, filename)
+
+        # Security: ensure file is within warc_dir
+        if not os.path.realpath(file_path).startswith(os.path.realpath(warc_dir)):
+            return jsonify({'error': 'Invalid path'}), 400
+
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+
+        return send_file(
+            file_path,
+            mimetype='application/warc',
+            as_attachment=True,
+            download_name=filename
+        )
+
     @app.route('/api/export/sites')
     @edit_required
     def api_export_sites():
