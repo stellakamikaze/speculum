@@ -41,6 +41,23 @@
 
 <div class="section-divider"></div>
 
+<!-- Tag Filter -->
+{% if all_tags %}
+<div class="tag-filter-bar">
+    <span class="filter-label">Filtra per tag:</span>
+    <div class="tag-filter-options">
+        <a href="{{ url_for('catalog') }}" class="tag-filter-btn {% if not current_tag %}active{% endif %}">Tutti</a>
+        {% for tag in all_tags %}
+        <a href="{{ url_for('catalog', tag=tag.id) }}"
+           class="tag-filter-btn {% if current_tag == tag.id %}active{% endif %}"
+           style="{% if current_tag == tag.id %}background-color: {{ tag.color }}; border-color: {{ tag.color }}; color: #fff{% else %}border-color: {{ tag.color }}{% endif %}">
+            {{ tag.name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% set ns = namespace(section_num=2) %}
 
 {% if categories %}
@@ -64,6 +81,16 @@
             </div>
             {% if site.description %}
             <p class="card-description">{{ site.description[:150] }}{% if site.description|length > 150 %}...{% endif %}</p>
+            {% endif %}
+            {% if site.tags %}
+            <div class="card-tags">
+                {% for tag in site.tags[:3] %}
+                <span class="card-tag" style="border-color: {{ tag.color }}">{{ tag.name }}</span>
+                {% endfor %}
+                {% if site.tags|length > 3 %}
+                <span class="card-tag-more">+{{ site.tags|length - 3 }}</span>
+                {% endif %}
+            </div>
             {% endif %}
             <div class="card-stats">
                 <span class="card-stat">{{ site.page_count }} {% if site.site_type == 'youtube' %}video{% else %}pagine{% endif %}</span>
@@ -108,6 +135,16 @@
             </div>
             {% if site.description %}
             <p class="card-description">{{ site.description[:150] }}{% if site.description|length > 150 %}...{% endif %}</p>
+            {% endif %}
+            {% if site.tags %}
+            <div class="card-tags">
+                {% for tag in site.tags[:3] %}
+                <span class="card-tag" style="border-color: {{ tag.color }}">{{ tag.name }}</span>
+                {% endfor %}
+                {% if site.tags|length > 3 %}
+                <span class="card-tag-more">+{{ site.tags|length - 3 }}</span>
+                {% endif %}
+            </div>
             {% endif %}
             <div class="card-stats">
                 <span class="card-stat">{{ site.page_count }} {% if site.site_type == 'youtube' %}video{% else %}pagine{% endif %}</span>

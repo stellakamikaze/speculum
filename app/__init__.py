@@ -184,6 +184,16 @@ def create_app():
                 CulturalMetadata.__table__.create(db.engine)
                 app.logger.info("Created cultural_metadata table")
 
+            # Create tags and site_tags tables if they don't exist
+            if 'tags' not in inspector.get_table_names():
+                from app.models import Tag, site_tags
+                Tag.__table__.create(db.engine)
+                app.logger.info("Created tags table")
+            if 'site_tags' not in inspector.get_table_names():
+                from app.models import site_tags
+                site_tags.create(db.engine)
+                app.logger.info("Created site_tags association table")
+
             # Initialize FTS5 tables for full-text search
             try:
                 from app.search import init_fts_tables
@@ -195,7 +205,7 @@ def create_app():
             app.logger.warning(f"Migration check failed: {e}")
     
     # Import models and utilities
-    from app.models import Site, Category, CrawlLog, Video, User, MirrorRequest, CulturalMetadata
+    from app.models import Site, Category, CrawlLog, Video, User, MirrorRequest, CulturalMetadata, Tag
     from app.crawler import (
         start_crawl, delete_mirror, get_mirror_path, is_youtube_url, MIRRORS_BASE_PATH,
         stop_crawl, get_active_crawls, get_crawl_live_log, get_crawl_progress
@@ -609,15 +619,39 @@ def create_app():
     @app.route('/catalog')
     def catalog():
         """Browse all archived sites"""
-        categories = get_categories_ordered(Category)
-        uncategorized_sites = Site.query.filter_by(category_id=None).order_by(Site.name).all()
+        # Get tag filter from query params
+        tag_filter = request.args.get('tag', type=int)
+        all_tags = Tag.query.order_by(Tag.name).all()
+
+        if tag_filter:
+            # Filter by tag - find the tag and get its sites
+            selected_tag = Tag.query.get(tag_filter)
+            if selected_tag:
+                # Get sites with this tag, grouped by category
+                tagged_sites = selected_tag.sites
+                categories = []
+                for cat in get_categories_ordered(Category):
+                    cat_sites = [s for s in tagged_sites if s.category_id == cat.id]
+                    if cat_sites:
+                        cat.sites = cat_sites
+                        categories.append(cat)
+                uncategorized_sites = [s for s in tagged_sites if s.category_id is None]
+            else:
+                categories = get_categories_ordered(Category)
+                uncategorized_sites = Site.query.filter_by(category_id=None).order_by(Site.name).all()
+        else:
+            categories = get_categories_ordered(Category)
+            uncategorized_sites = Site.query.filter_by(category_id=None).order_by(Site.name).all()
+
         stats = get_dashboard_stats(db, Site, Video)
         stats['categories'] = len(categories)
 
         return render_template('catalog.html',
                                categories=categories,
                                uncategorized_sites=uncategorized_sites,
-                               stats=stats)
+                               stats=stats,
+                               all_tags=all_tags,
+                               current_tag=tag_filter)
 
     @app.route('/about')
     def about():
@@ -1522,7 +1556,88 @@ Allow: /search
         """API: List all categories"""
         categories = get_categories_ordered(Category)
         return jsonify([c.to_dict() for c in categories])
-    
+
+    @app.route('/api/tags')
+    def api_tags():
+        """API: List all tags with site counts"""
+        tags = Tag.query.order_by(Tag.name).all()
+        return jsonify([t.to_dict() for t in tags])
+
+    @app.route('/api/tags', methods=['POST'])
+    @csrf.exempt
+    @edit_required
+    def api_create_tag():
+        """API: Create a new tag"""
+        data = request.get_json()
+        if not data or not data.get('name'):
+            return jsonify({'error': 'Tag name is required'}), 400
+
+        name = data['name'].strip().lower()
+        if len(name) < 2 or len(name) > 50:
+            return jsonify({'error': 'Tag name must be 2-50 characters'}), 400
+
+        existing = Tag.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({'error': 'Tag already exists', 'tag': existing.to_dict()}), 409
+
+        tag = Tag(name=name, color=data.get('color', '#666666'))
+        db.session.add(tag)
+        db.session.commit()
+        return jsonify(tag.to_dict()), 201
+
+    @app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+    @csrf.exempt
+    @admin_required
+    def api_delete_tag(tag_id):
+        """API: Delete a tag (admin only)"""
+        tag = Tag.query.get_or_404(tag_id)
+        db.session.delete(tag)
+        db.session.commit()
+        return jsonify({'success': True})
+
+    @app.route('/api/sites/<int:site_id>/tags', methods=['POST'])
+    @csrf.exempt
+    @edit_required
+    def api_add_site_tag(site_id):
+        """API: Add a tag to a site"""
+        site = Site.query.get_or_404(site_id)
+        data = request.get_json()
+
+        if not data or not data.get('tag'):
+            return jsonify({'error': 'Tag name or id is required'}), 400
+
+        tag_input = data['tag']
+
+        # Find or create tag
+        if isinstance(tag_input, int) or tag_input.isdigit():
+            tag = Tag.query.get(int(tag_input))
+        else:
+            tag_name = tag_input.strip().lower()
+            tag = Tag.query.filter_by(name=tag_name).first()
+            if not tag:
+                tag = Tag(name=tag_name)
+                db.session.add(tag)
+
+        if tag and tag not in site.tags:
+            site.tags.append(tag)
+            db.session.commit()
+
+        return jsonify({'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in site.tags]})
+
+    @app.route('/api/sites/<int:site_id>/tags/<int:tag_id>', methods=['DELETE'])
+    @csrf.exempt
+    @edit_required
+    def api_remove_site_tag(site_id, tag_id):
+        """API: Remove a tag from a site"""
+        site = Site.query.get_or_404(site_id)
+        tag = Tag.query.get_or_404(tag_id)
+
+        if tag in site.tags:
+            site.tags.remove(tag)
+            db.session.commit()
+
+        return jsonify({'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in site.tags]})
+
     @app.route('/api/stats')
     def api_stats():
         """API: Global statistics"""

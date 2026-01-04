@@ -32,6 +32,8 @@ tags:
     description: Full-text search across the archive
   - name: Categories
     description: Site categorization
+  - name: Tags
+    description: Flexible site tagging and filtering
   - name: Crawls
     description: Active crawl monitoring
   - name: Statistics
@@ -469,6 +471,111 @@ paths:
                     type: string
                     nullable: true
 
+  /tags:
+    get:
+      tags: [Tags]
+      summary: List all tags
+      description: Returns all tags with site counts for filtering.
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+    post:
+      tags: [Tags]
+      summary: Create a new tag
+      description: Creates a new tag (requires authentication).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+                color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+                  default: '#666666'
+      responses:
+        '200':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  tag:
+                    $ref: '#/components/schemas/Tag'
+        '400':
+          description: Invalid input
+
+  /sites/{site_id}/tags:
+    post:
+      tags: [Tags]
+      summary: Add tag to site
+      description: Adds an existing tag or creates and adds a new tag to a site.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [tag_id]
+                  properties:
+                    tag_id:
+                      type: integer
+                - type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    color:
+                      type: string
+      responses:
+        '200':
+          description: Tag added to site
+        '404':
+          description: Site or tag not found
+
+  /sites/{site_id}/tags/{tag_id}:
+    delete:
+      tags: [Tags]
+      summary: Remove tag from site
+      description: Removes a tag association from a site.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: tag_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tag removed from site
+        '404':
+          description: Site or tag not found
+
 components:
   schemas:
     Site:
@@ -499,6 +606,10 @@ components:
         category_id:
           type: integer
           nullable: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
         created_at:
           type: string
           format: date-time
@@ -544,5 +655,18 @@ components:
           type: integer
         name:
           type: string
+        site_count:
+          type: integer
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        color:
+          type: string
+          description: Hex color code for UI display
         site_count:
           type: integer

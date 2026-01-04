@@ -704,6 +704,208 @@ img {
 }
 
 /* ===========================================
+   TAGS
+   =========================================== */
+.tags-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    align-items: center;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 8px;
+    border: 1px solid;
+    background: transparent;
+}
+
+.tag-remove {
+    background: none;
+    border: none;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 0 2px;
+    color: inherit;
+}
+
+.tag-remove:hover {
+    opacity: 1;
+}
+
+.no-tags {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.btn-add-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 1rem;
+    font-weight: 700;
+    background: none;
+    border: 1px dashed var(--border-light);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-add-tag:hover {
+    border-color: var(--border);
+    color: var(--text-primary);
+    border-style: solid;
+}
+
+/* Tag modal */
+.tag-modal {
+    max-width: 400px;
+    width: 90%;
+}
+
+.tag-modal .modal-body {
+    padding: var(--space-md);
+}
+
+.existing-tags {
+    margin-bottom: var(--space-md);
+}
+
+.existing-tags .section-label,
+.new-tag-form .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-sm);
+}
+
+.tags-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.tag-btn {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tag-btn:hover {
+    transform: translateY(-1px);
+}
+
+.new-tag-form .form-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: flex-end;
+}
+
+.new-tag-form .form-input {
+    flex: 1;
+}
+
+.color-picker {
+    width: 40px;
+    height: 38px;
+    padding: 2px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+}
+
+/* Tag filter bar (catalog) */
+.tag-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+    flex-wrap: wrap;
+}
+
+.tag-filter-bar .filter-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.tag-filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+}
+
+.tag-filter-btn {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.tag-filter-btn:hover {
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+
+.tag-filter-btn.active {
+    background: var(--bg-dark);
+    border-color: var(--bg-dark);
+    color: var(--text-inverse);
+}
+
+/* Card tags */
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: var(--space-sm);
+}
+
+.card-tag {
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border: 1px solid;
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.card-tag-more {
+    font-size: 0.55rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    color: var(--text-muted);
+}
+
+/* ===========================================
    BUTTONS
    =========================================== */
 .btn {

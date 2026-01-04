@@ -117,6 +117,31 @@ class Category(db.Model):
         }
 
 
+# Many-to-many association table for Site <-> Tag
+site_tags = db.Table('site_tags',
+    db.Column('site_id', db.Integer, db.ForeignKey('sites.id'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tags.id'), primary_key=True)
+)
+
+
+class Tag(db.Model):
+    """Tags for flexible site categorization (many-to-many)"""
+    __tablename__ = 'tags'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    color = db.Column(db.String(7), default='#666666')  # Hex color for UI
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'color': self.color,
+            'site_count': len(self.sites) if hasattr(self, 'sites') else 0
+        }
+
+
 class Site(db.Model):
     __tablename__ = 'sites'
 
@@ -166,6 +191,10 @@ class Site(db.Model):
     # Relationship to videos (for YouTube channels)
     videos = db.relationship('Video', backref='channel', lazy='selectin', cascade='all, delete-orphan')
 
+    # Many-to-many relationship with tags
+    tags = db.relationship('Tag', secondary=site_tags, lazy='selectin',
+                          backref=db.backref('sites', lazy='selectin'))
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -174,6 +203,7 @@ class Site(db.Model):
             'description': self.description,
             'category_id': self.category_id,
             'category_name': self.category.name if self.category else None,
+            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in self.tags],
             'site_type': self.site_type,
             'status': self.status,
             'last_crawl': self.last_crawl.isoformat() if self.last_crawl else None,

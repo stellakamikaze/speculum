@@ -67,7 +67,22 @@
         <dl class="detail-list">
             <dt>Categoria</dt>
             <dd>{{ site.category.name if site.category else 'Nessuna' }}</dd>
-            
+
+            <dt>Tag</dt>
+            <dd class="tags-cell" id="site-tags">
+                {% if site.tags %}
+                {% for tag in site.tags %}
+                <span class="tag" style="background-color: {{ tag.color }}20; border-color: {{ tag.color }}">
+                    {{ tag.name }}
+                    <button type="button" class="tag-remove" onclick="removeTag({{ tag.id }})" title="Rimuovi">&times;</button>
+                </span>
+                {% endfor %}
+                {% else %}
+                <span class="no-tags">Nessun tag</span>
+                {% endif %}
+                <button type="button" class="btn-add-tag" onclick="showAddTagModal()" title="Aggiungi tag">+</button>
+            </dd>
+
             <dt>Stato</dt>
             <dd>
                 <span class="status-badge status-{{ site.status }}">
@@ -205,6 +220,30 @@
         </div>
     </div>
 
+    <!-- Add tag modal -->
+    <div id="add-tag-modal" class="modal" style="display:none">
+        <div class="modal-content tag-modal">
+            <div class="modal-header">
+                <h3>Aggiungi tag</h3>
+                <button onclick="closeAddTagModal()" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="existing-tags" id="existing-tags-list">
+                    <p class="section-label">Tag esistenti</p>
+                    <div class="tags-selector"></div>
+                </div>
+                <div class="new-tag-form">
+                    <p class="section-label">Oppure crea nuovo tag</p>
+                    <div class="form-row">
+                        <input type="text" id="new-tag-name" placeholder="Nome tag" class="form-input">
+                        <input type="color" id="new-tag-color" value="#666666" class="color-picker">
+                        <button type="button" onclick="createAndAddTag()" class="btn btn-primary">Crea</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
     let siteLogInterval = null;
 
@@ -238,8 +277,143 @@
     }
 
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeSiteLog();
+        if (e.key === 'Escape') {
+            closeSiteLog();
+            closeAddTagModal();
+        }
     });
+
+    // Tag management
+    const siteId = {{ site.id }};
+    let currentTags = {{ site.tags|tojson if site.tags else '[]' }};
+
+    function showAddTagModal() {
+        const modal = document.getElementById('add-tag-modal');
+        modal.style.display = 'flex';
+        loadExistingTags();
+    }
+
+    function closeAddTagModal() {
+        document.getElementById('add-tag-modal').style.display = 'none';
+        document.getElementById('new-tag-name').value = '';
+    }
+
+    function loadExistingTags() {
+        fetch('/api/tags')
+            .then(r => r.json())
+            .then(tags => {
+                const container = document.querySelector('#existing-tags-list .tags-selector');
+                const currentTagIds = currentTags.map(t => t.id);
+
+                const availableTags = tags.filter(t => !currentTagIds.includes(t.id));
+
+                if (availableTags.length === 0) {
+                    container.innerHTML = '<p class="empty-text">Nessun tag disponibile</p>';
+                    return;
+                }
+
+                container.innerHTML = availableTags.map(tag => `
+                    <button type="button" class="tag-btn"
+                            style="background-color: ${tag.color}20; border-color: ${tag.color}"
+                            onclick="addExistingTag(${tag.id}, '${tag.name}', '${tag.color}')">
+                        ${tag.name}
+                    </button>
+                `).join('');
+            })
+            .catch(err => console.error('Error loading tags:', err));
+    }
+
+    function addExistingTag(tagId, tagName, tagColor) {
+        fetch(`/api/sites/${siteId}/tags`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tag_id: tagId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentTags.push({id: tagId, name: tagName, color: tagColor});
+                renderTags();
+                closeAddTagModal();
+            } else {
+                alert(data.error || 'Errore nell\'aggiunta del tag');
+            }
+        })
+        .catch(err => {
+            console.error('Error adding tag:', err);
+            alert('Errore nell\'aggiunta del tag');
+        });
+    }
+
+    function createAndAddTag() {
+        const name = document.getElementById('new-tag-name').value.trim();
+        const color = document.getElementById('new-tag-color').value;
+
+        if (!name) {
+            alert('Inserisci un nome per il tag');
+            return;
+        }
+
+        fetch(`/api/sites/${siteId}/tags`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, color: color})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentTags.push({id: data.tag.id, name: data.tag.name, color: data.tag.color});
+                renderTags();
+                closeAddTagModal();
+            } else {
+                alert(data.error || 'Errore nella creazione del tag');
+            }
+        })
+        .catch(err => {
+            console.error('Error creating tag:', err);
+            alert('Errore nella creazione del tag');
+        });
+    }
+
+    function removeTag(tagId) {
+        if (!confirm('Rimuovere questo tag dal sito?')) return;
+
+        fetch(`/api/sites/${siteId}/tags/${tagId}`, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentTags = currentTags.filter(t => t.id !== tagId);
+                renderTags();
+            } else {
+                alert(data.error || 'Errore nella rimozione del tag');
+            }
+        })
+        .catch(err => {
+            console.error('Error removing tag:', err);
+            alert('Errore nella rimozione del tag');
+        });
+    }
+
+    function renderTags() {
+        const container = document.getElementById('site-tags');
+        let html = '';
+
+        if (currentTags.length > 0) {
+            html = currentTags.map(tag => `
+                <span class="tag" style="background-color: ${tag.color}20; border-color: ${tag.color}">
+                    ${tag.name}
+                    <button type="button" class="tag-remove" onclick="removeTag(${tag.id})" title="Rimuovi">&times;</button>
+                </span>
+            `).join('');
+        } else {
+            html = '<span class="no-tags">Nessun tag</span>';
+        }
+
+        html += '<button type="button" class="btn-add-tag" onclick="showAddTagModal()" title="Aggiungi tag">+</button>';
+        container.innerHTML = html;
+    }
     </script>
     
     {% if site.site_type == 'youtube' and videos %}
