@@ -25,6 +25,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
 from flask_babel import Babel, gettext as _, lazy_gettext as _l
+from flask_compress import Compress
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,6 +36,7 @@ csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"])
 cors = CORS()
 babel = Babel()
+compress = Compress()
 
 def get_locale():
     """Select best language from user preferences."""
@@ -103,6 +105,15 @@ def create_app():
     limiter.init_app(app)
     # CORS for public API routes only
     cors.init_app(app, resources={r"/api/*": {"origins": "*"}, r"/oembed": {"origins": "*"}})
+
+    # Gzip compression for responses (min 500 bytes, excludes images/video)
+    app.config['COMPRESS_MIMETYPES'] = [
+        'text/html', 'text/css', 'text/xml', 'text/plain',
+        'application/json', 'application/javascript', 'application/xml',
+        'application/atom+xml', 'application/rss+xml'
+    ]
+    app.config['COMPRESS_MIN_SIZE'] = 500
+    compress.init_app(app)
 
     # Babel for i18n
     app.config['BABEL_DEFAULT_LOCALE'] = 'en'
@@ -258,6 +269,52 @@ def create_app():
         # HSTS for HTTPS (1 year)
         if request.is_secure:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+        # Cache headers based on content type and path
+        path = request.path
+        content_type = response.content_type or ''
+
+        # Static assets: long cache (1 year) - CSS, JS, fonts, images
+        if path.startswith('/static/'):
+            # Immutable for versioned assets, long cache otherwise
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            response.headers['Vary'] = 'Accept-Encoding'
+
+        # Mirror content: moderate cache (1 day) - archived sites
+        elif path.startswith('/mirror/'):
+            response.headers['Cache-Control'] = 'public, max-age=86400'
+            response.headers['Vary'] = 'Accept-Encoding'
+
+        # Screenshots and thumbnails: moderate cache (1 week)
+        elif path.startswith('/screenshot/') or path.startswith('/thumbnail/'):
+            response.headers['Cache-Control'] = 'public, max-age=604800'
+
+        # Video files: long cache (1 month) - large files benefit from caching
+        elif path.startswith('/video/'):
+            response.headers['Cache-Control'] = 'public, max-age=2592000'
+            response.headers['Vary'] = 'Accept-Encoding'
+
+        # API responses: short cache or no cache
+        elif path.startswith('/api/'):
+            # GET requests can be cached briefly
+            if request.method == 'GET':
+                response.headers['Cache-Control'] = 'public, max-age=60'
+            else:
+                response.headers['Cache-Control'] = 'no-store'
+
+        # Sitemap and robots.txt: cache for 1 hour
+        elif path in ['/sitemap.xml', '/robots.txt']:
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+
+        # RSS/Atom feeds: cache for 15 minutes
+        elif path in ['/feed', '/feed.xml', '/rss', '/atom.xml']:
+            response.headers['Cache-Control'] = 'public, max-age=900'
+
+        # HTML pages: no-cache but allow conditional requests (ETag)
+        elif 'text/html' in content_type:
+            response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+            response.headers['Vary'] = 'Accept-Language, Cookie'
+
         return response
 
     @app.context_processor

@@ -25,3 +25,6 @@ Pillow==10.2.0
 
 # CORS Support
 flask-cors==4.0.0
+
+# Gzip Compression
+flask-compress==1.14
