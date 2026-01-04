@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Web Archiving Tools for Digital Archivists — Speculum{% endblock %}
+
+{% block meta_description %}Professional web archiving platform for digital archivists. Mirror websites, YouTube channels, and at-risk content with wget, yt-dlp, and SingleFile. Free API access.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What archiving methods does Speculum support?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum supports three archiving methods: wget for complete website mirroring with recursive crawling, yt-dlp for YouTube channels and video content, and SingleFile for JavaScript-heavy single-page applications."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Can I access the archive programmatically?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Speculum provides a REST API for searching the archive, checking crawl status, and accessing metadata. The API supports JSON responses and is CORS-enabled for web applications."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How does Speculum handle large websites?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum uses rate-limited recursive crawling with configurable depth limits. Large sites are processed in the background with progress tracking and automatic retry on failures."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is there Wayback Machine integration?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Speculum integrates with the Internet Archive's Wayback Machine. You can submit URLs for preservation to both Speculum's local archive and the Wayback Machine simultaneously."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="landing-page">
+    <header class="landing-hero">
+        <div class="hero-badge">For Archivists</div>
+        <h1 class="hero-title">Professional<br>Web Archiving</h1>
+        <div class="hero-rule"></div>
+        <p class="hero-tagline">
+            Open-source tools for preserving websites, YouTube channels, and digital content.
+            Built by archivists, for archivists.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Start Archiving</a>
+            <a href="{{ url_for('about') }}" class="btn btn-large">Learn More</a>
+        </div>
+    </header>
+
+    <section class="landing-stats">
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_sites }}</span>
+            <span class="stat-label">Sites Archived</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_videos }}</span>
+            <span class="stat-label">Videos Preserved</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">3</span>
+            <span class="stat-label">Crawl Methods</span>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">01.</span>
+            <h2 class="section-title">Archiving Methods</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>wget Mirroring</h3>
+                <p>Complete recursive website mirroring with rate limiting, depth control, and asset preservation. Ideal for static sites and traditional web content.</p>
+                <ul class="feature-list">
+                    <li>Recursive crawling</li>
+                    <li>CSS/JS/image preservation</li>
+                    <li>Configurable depth limits</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>yt-dlp Integration</h3>
+                <p>Archive entire YouTube channels or individual videos with metadata extraction, thumbnail preservation, and multiple quality options.</p>
+                <ul class="feature-list">
+                    <li>Full channel archiving</li>
+                    <li>Metadata extraction</li>
+                    <li>Subtitle preservation</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>SingleFile Capture</h3>
+                <p>JavaScript-rendered single-page capture for modern web applications, SPAs, and dynamic content that wget cannot process.</p>
+                <ul class="feature-list">
+                    <li>JS-rendered content</li>
+                    <li>Single HTML output</li>
+                    <li>Embedded assets</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">02.</span>
+            <h2 class="section-title">API Access</h2>
+        </div>
+        <div class="api-showcase">
+            <div class="api-info">
+                <p>Programmatic access to the archive via REST API. Search, retrieve metadata, and monitor crawl status.</p>
+                <ul class="feature-list">
+                    <li>JSON responses</li>
+                    <li>CORS-enabled</li>
+                    <li>Full-text search</li>
+                    <li>oEmbed support</li>
+                </ul>
+                <a href="{{ url_for('about') }}" class="btn btn-secondary">API Documentation</a>
+            </div>
+            <div class="api-example">
+                <pre><code>GET /api/sites
+GET /api/search?q=keyword
+GET /api/sites/{id}/status</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-faq">
+        <div class="section-header">
+            <span class="section-number">03.</span>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+        </div>
+        <dl class="faq-list">
+            <div class="faq-item">
+                <dt>What archiving methods does Speculum support?</dt>
+                <dd>Speculum supports three archiving methods: wget for complete website mirroring with recursive crawling, yt-dlp for YouTube channels and video content, and SingleFile for JavaScript-heavy single-page applications.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Can I access the archive programmatically?</dt>
+                <dd>Yes, Speculum provides a REST API for searching the archive, checking crawl status, and accessing metadata. The API supports JSON responses and is CORS-enabled for web applications.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>How does Speculum handle large websites?</dt>
+                <dd>Speculum uses rate-limited recursive crawling with configurable depth limits. Large sites are processed in the background with progress tracking and automatic retry on failures.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Is there Wayback Machine integration?</dt>
+                <dd>Yes, Speculum integrates with the Internet Archive's Wayback Machine. You can submit URLs for preservation to both Speculum's local archive and the Wayback Machine simultaneously.</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="landing-cta">
+        <h2>Ready to preserve digital history?</h2>
+        <p>Submit your first archiving request or explore our existing collection.</p>
+        <div class="cta-actions">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Submit Archive Request</a>
+            <a href="{{ url_for('catalog') }}" class="btn btn-large">Browse Catalog</a>
+        </div>
+    </section>
+</article>
+{% endblock %}

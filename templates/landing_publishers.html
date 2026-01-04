@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Backup Your Content — Speculum for Independent Publishers{% endblock %}
+
+{% block meta_description %}Free web archiving for independent publishers, bloggers, and content creators. Protect your website and YouTube channel from disappearing. Permanent backups, no cost.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "Is Speculum free for independent publishers?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Speculum is completely free. We archive websites and YouTube channels at no cost to creators. Our mission is preservation, not profit."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What happens to my content if my hosting expires?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Once archived in Speculum, your content remains permanently accessible even if your original hosting expires, your domain lapses, or your platform shuts down. We create complete, navigable mirrors."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Can I request my own website to be archived?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Absolutely. We encourage creators to submit their own content for preservation. Use our request form to submit your website or YouTube channel URL, and we'll archive it for posterity."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How do I know my content has been successfully archived?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "After archiving, you'll find your site in our catalog with a status indicator. You can browse the archived version to verify completeness. We also integrate with the Internet Archive's Wayback Machine for additional redundancy."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="landing-page">
+    <header class="landing-hero">
+        <div class="hero-badge">For Creators</div>
+        <h1 class="hero-title">Protect Your<br>Digital Work</h1>
+        <div class="hero-rule"></div>
+        <p class="hero-tagline">
+            Free permanent backup for independent publishers, bloggers, and content creators.
+            Your work deserves to outlive your hosting.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Archive My Site</a>
+            <a href="{{ url_for('about') }}" class="btn btn-large">How It Works</a>
+        </div>
+    </header>
+
+    <section class="landing-stats">
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_sites }}</span>
+            <span class="stat-label">Sites Protected</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_videos }}</span>
+            <span class="stat-label">Videos Backed Up</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">0</span>
+            <span class="stat-label">Cost to You</span>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">01.</span>
+            <h2 class="section-title">Why Archive Your Content?</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Hosting Expires</h3>
+                <p>Web hosting costs money. When you stop paying, your content disappears. Speculum creates a permanent copy that survives hosting lapses.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Platforms Shut Down</h3>
+                <p>GeoCities, Google+, Vine — platforms disappear. Your YouTube channel or blog platform could be next. We preserve your work independently.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Domains Lapse</h3>
+                <p>Forgot to renew your domain? Someone else bought it? Your archived content remains accessible through Speculum's permanent URLs.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">02.</span>
+            <h2 class="section-title">What We Archive</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Personal Websites</h3>
+                <p>Blogs, portfolios, personal sites — complete mirror with all pages, images, and styling preserved exactly as you created them.</p>
+            </div>
+            <div class="feature-card">
+                <h3>YouTube Channels</h3>
+                <p>Full channel backup including all videos, thumbnails, descriptions, and metadata. Never lose years of content creation.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Independent Publications</h3>
+                <p>Zines, newsletters, small press — your independent publishing work preserved for future readers and researchers.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-faq">
+        <div class="section-header">
+            <span class="section-number">03.</span>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+        </div>
+        <dl class="faq-list">
+            <div class="faq-item">
+                <dt>Is Speculum free for independent publishers?</dt>
+                <dd>Yes, Speculum is completely free. We archive websites and YouTube channels at no cost to creators. Our mission is preservation, not profit.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>What happens to my content if my hosting expires?</dt>
+                <dd>Once archived in Speculum, your content remains permanently accessible even if your original hosting expires, your domain lapses, or your platform shuts down. We create complete, navigable mirrors.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Can I request my own website to be archived?</dt>
+                <dd>Absolutely. We encourage creators to submit their own content for preservation. Use our request form to submit your website or YouTube channel URL, and we'll archive it for posterity.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>How do I know my content has been successfully archived?</dt>
+                <dd>After archiving, you'll find your site in our catalog with a status indicator. You can browse the archived version to verify completeness. We also integrate with the Internet Archive's Wayback Machine for additional redundancy.</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="landing-cta">
+        <h2>Preserve your work today</h2>
+        <p>Submit your website or YouTube channel for free archiving. It takes less than a minute.</p>
+        <div class="cta-actions">
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-primary btn-large">Submit Your Site</a>
+            <a href="{{ url_for('catalog') }}" class="btn btn-large">See Examples</a>
+        </div>
+    </section>
+</article>
+{% endblock %}

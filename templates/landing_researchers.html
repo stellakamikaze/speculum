@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Web Archive for Academic Research — Speculum{% endblock %}
+
+{% block meta_description %}Digital archive for academic researchers. Search preserved websites and YouTube content, cite archived sources, and access historical web data for scholarly research.{% endblock %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "How can I cite content from Speculum in academic papers?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Each archived page has a permanent URL and timestamp. Use the archive URL with the access date for citations. We provide structured metadata including original URL, archive date, and content description for proper academic attribution."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Can I search the full text of archived websites?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, Speculum includes full-text search powered by SQLite FTS5. You can search across all archived content, filter by category, date range, and content type to find relevant sources for your research."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What types of content are preserved in Speculum?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Speculum preserves websites, blogs, YouTube channels, independent publications, community forums, and cultural documentation. We focus on at-risk content including counterculture, underground scenes, and independent media."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is Speculum content accessible for research purposes?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, all archived content is freely accessible for research, education, and preservation purposes. We provide RSS feeds, API access, and structured metadata to facilitate academic use."
+            }
+        }
+    ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="landing-page">
+    <header class="landing-hero">
+        <div class="hero-badge">For Researchers</div>
+        <h1 class="hero-title">Digital Sources<br>Preserved</h1>
+        <div class="hero-rule"></div>
+        <p class="hero-tagline">
+            Access archived websites, video content, and digital publications for academic research.
+            Searchable, citable, permanently preserved.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('search_page') }}" class="btn btn-primary btn-large">Search Archive</a>
+            <a href="{{ url_for('catalog') }}" class="btn btn-large">Browse Collection</a>
+        </div>
+    </header>
+
+    <section class="landing-stats">
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_sites }}</span>
+            <span class="stat-label">Sources Archived</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ stats.total_videos }}</span>
+            <span class="stat-label">Videos Available</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ "%.1f"|format(stats.total_size / 1073741824) }}</span>
+            <span class="stat-label">GB of Data</span>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">01.</span>
+            <h2 class="section-title">Research Tools</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Full-Text Search</h3>
+                <p>Search across all archived content using advanced full-text search. Find specific phrases, filter by category, and discover relevant sources.</p>
+                <ul class="feature-list">
+                    <li>SQLite FTS5 powered</li>
+                    <li>Category filtering</li>
+                    <li>Date range queries</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>Permanent URLs</h3>
+                <p>Every archived page has a stable, permanent URL suitable for academic citations. Content remains accessible even if the original source disappears.</p>
+                <ul class="feature-list">
+                    <li>Stable identifiers</li>
+                    <li>Timestamp metadata</li>
+                    <li>Original URL preserved</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h3>Structured Metadata</h3>
+                <p>Rich metadata for each archived item including descriptions, categories, dates, and AI-generated summaries to help contextualize sources.</p>
+                <ul class="feature-list">
+                    <li>JSON-LD schema</li>
+                    <li>Export formats</li>
+                    <li>API access</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-features">
+        <div class="section-header">
+            <span class="section-number">02.</span>
+            <h2 class="section-title">Content Categories</h2>
+        </div>
+        <div class="categories-showcase">
+            <p>Speculum focuses on preserving at-risk digital content across diverse categories:</p>
+            <ul class="category-list">
+                <li>Independent publications and zines</li>
+                <li>Personal websites and blogs</li>
+                <li>YouTube channels and video archives</li>
+                <li>Community forums and discussion boards</li>
+                <li>Cultural documentation and oral histories</li>
+                <li>Underground and counterculture content</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="landing-faq">
+        <div class="section-header">
+            <span class="section-number">03.</span>
+            <h2 class="section-title">Frequently Asked Questions</h2>
+        </div>
+        <dl class="faq-list">
+            <div class="faq-item">
+                <dt>How can I cite content from Speculum in academic papers?</dt>
+                <dd>Each archived page has a permanent URL and timestamp. Use the archive URL with the access date for citations. We provide structured metadata including original URL, archive date, and content description for proper academic attribution.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Can I search the full text of archived websites?</dt>
+                <dd>Yes, Speculum includes full-text search powered by SQLite FTS5. You can search across all archived content, filter by category, date range, and content type to find relevant sources for your research.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>What types of content are preserved in Speculum?</dt>
+                <dd>Speculum preserves websites, blogs, YouTube channels, independent publications, community forums, and cultural documentation. We focus on at-risk content including counterculture, underground scenes, and independent media.</dd>
+            </div>
+            <div class="faq-item">
+                <dt>Is Speculum content accessible for research purposes?</dt>
+                <dd>Yes, all archived content is freely accessible for research, education, and preservation purposes. We provide RSS feeds, API access, and structured metadata to facilitate academic use.</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="landing-cta">
+        <h2>Start your research</h2>
+        <p>Explore our archive or suggest important sources that should be preserved.</p>
+        <div class="cta-actions">
+            <a href="{{ url_for('search_page') }}" class="btn btn-primary btn-large">Search the Archive</a>
+            <a href="{{ url_for('request_mirror') }}" class="btn btn-large">Suggest a Source</a>
+        </div>
+    </section>
+</article>
+{% endblock %}

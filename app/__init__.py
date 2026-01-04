@@ -634,6 +634,26 @@ def create_app():
         """Contact page"""
         return render_template('contact.html')
 
+    # Landing pages for different audiences (SEO/AEO optimized)
+    @app.route('/for-archivists')
+    def landing_archivists():
+        """Landing page for digital archivists"""
+        stats = get_dashboard_stats(db, Site, Video)
+        return render_template('landing_archivists.html', stats=stats)
+
+    @app.route('/for-researchers')
+    def landing_researchers():
+        """Landing page for academic researchers"""
+        stats = get_dashboard_stats(db, Site, Video)
+        return render_template('landing_researchers.html', stats=stats)
+
+    @app.route('/for-publishers')
+    @app.route('/for-creators')
+    def landing_publishers():
+        """Landing page for independent publishers and content creators"""
+        stats = get_dashboard_stats(db, Site, Video)
+        return render_template('landing_publishers.html', stats=stats)
+
     @app.route('/feed')
     @app.route('/feed.xml')
     @app.route('/rss')
@@ -713,6 +733,10 @@ def create_app():
             ('/about', 0.5, 'monthly'),
             ('/categories', 0.6, 'weekly'),
             ('/feed', 0.4, 'daily'),
+            # Landing pages for different audiences
+            ('/for-archivists', 0.7, 'monthly'),
+            ('/for-researchers', 0.7, 'monthly'),
+            ('/for-publishers', 0.7, 'monthly'),
         ]
 
         urls = []
