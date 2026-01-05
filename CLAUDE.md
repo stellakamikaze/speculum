@@ -2,6 +2,8 @@
 
 Web mirroring system for archiving websites and YouTube channels.
 
+> **⚠️ PRIMA DI INIZIARE:** Consulta il [Google Doc](https://docs.google.com/document/d/1jraxO9VfHwXHvl-RrOMCpuvmh3vGiCzfArLqFserekM/edit) (tab Speculum) per leggere le indicazioni dell'utente su cosa sviluppare.
+
 ## Quick Start
 
 ```bash
