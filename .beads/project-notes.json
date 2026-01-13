@@ -1,0 +1,47 @@
+{
+  "state_of_art": {
+    "content": "# Speculum - Stato dell'Arte\n\n## Cos'è Speculum\nSistema di web archiving per preservare siti web e canali YouTube. Sviluppato per archivisti, ricercatori e librerie indipendenti.\n\n## Stack Tecnologico\n- **Backend:** Flask + SQLAlchemy + SQLite\n- **Container:** Docker + Colima\n- **Crawler:** wget, yt-dlp, singlefile\n- **AI:** Ollama per metadata generation\n- **Porta:** 5050\n\n## Funzionalità Implementate\n- Crawling ricorsivo con wget\n- Cattura JS-rendered con singlefile\n- Download canali YouTube con yt-dlp\n- Ricerca full-text (SQLite FTS5)\n- Integrazione Wayback Machine\n- AI metadata generation pre/post crawl\n- Notifiche Telegram\n- Export Ghost CMS\n- Atom/RSS feed\n\n## Modelli Principali\n- **Site:** Siti/canali archiviati con status flow (pending → crawling → ready/error/dead)\n- **Video:** Metadata video YouTube\n- **MirrorRequest:** Coda richieste pubbliche\n- **CulturalMetadata:** Campi culturali estesi (Celeste)\n\n## In Sviluppo\n- Epic 6: SEO/AEO Optimization per lancio pubblico\n- Sitemap automatico\n- Schema markup JSON-LD\n- Landing pages ottimizzate",
+    "updated_at": "2026-01-05T18:30:00Z"
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Qual è la prossima feature prioritaria?",
+      "answer": "Completare Epic 6 (Distribution Strategy): SEO optimization, meta tags Open Graph, e schema markup JSON-LD.",
+      "category": "roadmap",
+      "created_at": "2026-01-05T18:30:00Z",
+      "answered_at": "2026-01-05T18:30:00Z"
+    },
+    {
+      "id": "q2",
+      "question": "Come viene gestito il fallimento dei crawl?",
+      "answer": "Status flow: pending → crawling → ready (success) o error → retry_pending → crawling (max 3 tentativi) → dead (fallimento permanente).",
+      "category": "architecture",
+      "created_at": "2026-01-05T18:30:00Z",
+      "answered_at": "2026-01-05T18:30:00Z"
+    },
+    {
+      "id": "q3",
+      "question": "Ci sono bug noti da risolvere?",
+      "answer": "Nessun bug critico noto. Verificare performance AI metadata su contenuti molto lunghi.",
+      "category": "bugs",
+      "created_at": "2026-01-05T18:30:00Z",
+      "answered_at": "2026-01-05T18:30:00Z"
+    },
+    {
+      "id": "q4",
+      "question": "Quale integrazione Celeste è pianificata?",
+      "answer": "CulturalMetadata per campi estesi: contesto storico, rilevanza culturale, tag tematici avanzati. Vedi NEXT_STEPS.md.",
+      "category": "design",
+      "created_at": "2026-01-05T18:30:00Z",
+      "answered_at": "2026-01-05T18:30:00Z"
+    }
+  ],
+  "question_templates": [
+    {"id": "t1", "question": "Qual è la prossima feature da implementare?", "category": "roadmap"},
+    {"id": "t2", "question": "Ci sono bug noti da risolvere?", "category": "bugs"},
+    {"id": "t3", "question": "Quali decisioni architetturali sono in sospeso?", "category": "architecture"},
+    {"id": "t4", "question": "Come vuoi gestire [specifico aspetto]?", "category": "design"},
+    {"id": "t5", "question": "Quali test mancano?", "category": "testing"}
+  ]
+}
